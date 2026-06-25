@@ -389,7 +389,6 @@
         </header>
 
         <main class="app-body">
-            <!-- Dashboard View -->
             <div class="view" id="view-home">
                 <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 12px; margin-bottom: 20px;">
                     <div class="card" style="background: var(--card); border:none; border-radius:16px; margin:0;">
@@ -422,7 +421,6 @@
                 </div>
             </div>
 
-            <!-- Clients View -->
             <div class="view" id="view-clients">
                 <div style="position: sticky; top: 0; background: var(--bg); z-index: 10; padding-bottom: 12px;">
                     <div style="display: flex; gap: 10px; margin-bottom: 8px;">
@@ -433,8 +431,6 @@
                 <div id="clients-list" style="padding-bottom: 80px;"></div>
             </div>
 
-            <!-- Calendar View -->
-            <!-- Changed default view to active here just in case, but JS will handle it -->
             <div class="view active" id="view-calendar">
                 <div class="view-switcher">
                     <div class="view-switcher-btn active" data-mode="month">月</div>
@@ -471,7 +467,6 @@
                 </div>
             </div>
 
-            <!-- Records View -->
             <div class="view" id="view-records">
                 <div id="records-list" style="padding-bottom: 80px;"></div>
             </div>
@@ -491,7 +486,6 @@
                     <svg width="28" height="28" viewBox="0 0 24 24" fill="none" stroke="#0c1015" stroke-width="2.5"><line x1="12" y1="5" x2="12" y2="19"/><line x1="5" y1="12" x2="19" y2="12"/></svg>
                 </div>
             </div>
-            <!-- Changed default active nav to calendar -->
             <div class="nav-item-mobile active" data-view="calendar">
                 <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="3" y="4" width="18" height="18" rx="2" ry="2"/><line x1="16" y1="2" x2="16" y2="6"/><line x1="8" y1="2" x2="8" y2="6"/><line x1="3" y1="10" x2="21" y2="10"/></svg>
                 <span>日历</span>
@@ -521,7 +515,7 @@
     <script>
         if ('serviceWorker' in navigator) {
             const swCode = `
-                const CACHE_NAME = 'crm-v6'; 
+                const CACHE_NAME = 'crm-v8-flow'; 
                 self.addEventListener('fetch', event => {
                     event.respondWith(fetch(event.request).catch(() => caches.match(event.request)));
                 });
@@ -801,7 +795,7 @@
         };
 
         // --- Modals ---
-        window.openModal = (type, id = null, dateOverride = null) => {
+        window.openModal = (type, id = null, dateOverride = null, preselectedClientId = null) => {
             const overlay = document.getElementById('modalOverlay');
             const body = document.getElementById('modalBody');
             const header = document.getElementById('modalHeader');
@@ -823,7 +817,7 @@
             } 
             else if (type === 'visit') {
                 header.innerText = '新建拜访计划';
-                const clientOptions = data.clients.map(c => `<option value="${c.id}">${c.name}</option>`).join('');
+                const clientOptions = data.clients.map(c => `<option value="${c.id}" ${c.id === preselectedClientId ? 'selected' : ''}>${c.name}</option>`).join('');
                 body.innerHTML = `
                     <select class="form-select" id="m_client"><option value="">选择客户 *</option>${clientOptions}</select>
                     <input type="date" class="form-input" id="m_date" value="${dateOverride || getTodayStr()}">
@@ -849,13 +843,11 @@
                     </div>
                     <input type="hidden" id="v_status" value="${visit.status}">
 
-                    <!-- Common Description Field -->
                     <div id="desc_container" style="margin-top: 16px;">
                         <label style="font-size: 12px; color: var(--text-muted);" id="desc_label">情况说明</label>
                         <textarea class="form-input" id="v_detail" style="margin-top:8px; margin-bottom:0;" placeholder="请输入情况说明">${visit.detail || ''}</textarea>
                     </div>
 
-                    <!-- Done Specific Fields -->
                     <div id="follow_up_fields" style="margin-top: 16px; display: ${visit.status === 'done' ? 'block' : 'none'};">
                         <div class="status-group" style="margin-top:0;">
                             <label style="font-size: 12px; color: var(--text-muted); margin-top: 12px; display:block;">下次跟进</label>
@@ -864,7 +856,6 @@
                         </div>
                     </div>
 
-                    <!-- Reschedule Specific Fields -->
                     <div id="reschedule_date_field" style="margin-top: 16px; display: ${visit.status === 'reschedule' ? 'block' : 'none'};">
                          <div class="status-group" style="margin-top:0;">
                             <label style="font-size: 12px; color: var(--text-muted);">改期至</label>
@@ -876,7 +867,6 @@
                 window.setStatus = (status) => {
                     document.getElementById('v_status').value = status;
                     
-                    // UI Toggles
                     document.querySelectorAll('.status-option').forEach(el => {
                         el.classList.remove('active', 'done', 'reschedule', 'missed');
                         if(el.getAttribute('onclick').includes(status)) {
@@ -890,14 +880,13 @@
                     document.getElementById('follow_up_fields').style.display = status === 'done' ? 'block' : 'none';
                     document.getElementById('reschedule_date_field').style.display = status === 'reschedule' ? 'block' : 'none';
                     
-                    // Handle Description Field Label and Required State
                     const label = document.getElementById('desc_label');
                     const input = document.getElementById('v_detail');
                     
                     if (status === 'missed') {
                         label.innerHTML = '未拜访原因 <span class="required-star">*</span>';
                         input.placeholder = '请填写未拜访原因（必填）';
-                        input.style.borderColor = 'var(--danger)'; // Visual cue
+                        input.style.borderColor = 'var(--danger)';
                     } else if (status === 'done') {
                         label.innerText = '拜访详情';
                         input.placeholder = '记录本次拜访成果...';
@@ -909,7 +898,6 @@
                     }
                 };
                 
-                // Initialize UI
                 window.setStatus(visit.status);
             }
 
@@ -926,10 +914,31 @@
                 if (id) {
                     const c = data.clients.find(x => x.id === id);
                     Object.assign(c, { name, contact: document.getElementById('c_contact').value, notes: document.getElementById('c_notes').value });
+                    saveData(); 
+                    closeModal(); 
+                    renderClients(); 
+                    renderHome();
                 } else {
-                    data.clients.push({ id: Date.now(), name, contact: document.getElementById('c_contact').value, notes: document.getElementById('c_notes').value, avatar: name.charAt(0) });
+                    // New Client Logic
+                    const newClientId = Date.now();
+                    data.clients.push({ 
+                        id: newClientId, 
+                        name, 
+                        contact: document.getElementById('c_contact').value, 
+                        notes: document.getElementById('c_notes').value, 
+                        avatar: name.charAt(0) 
+                    });
+                    saveData();
+                    renderClients(); // Update list in background
+
+                    // Optimized Workflow: Ask to add visit
+                    if (confirm('客户创建成功！是否立即为该客户添加拜访计划？')) {
+                        // Switch content to Visit Modal without closing animation
+                        openModal('visit', null, getTodayStr(), newClientId);
+                    } else {
+                        closeModal(); // Only close if user cancels the follow-up action
+                    }
                 }
-                saveData(); closeModal(); renderClients(); renderHome();
             } 
             else if (type === 'visit') {
                 const clientId = parseInt(document.getElementById('m_client').value);
@@ -944,7 +953,6 @@
                 const status = document.getElementById('v_status').value;
                 const detail = document.getElementById('v_detail').value;
                 
-                // Validation
                 if (status === 'missed' && !detail) {
                     return alert('未拜访情况下，情况说明为必填项');
                 }
@@ -1003,7 +1011,6 @@
         document.getElementById('modalOverlay').addEventListener('click', closeModal);
 
         loadData();
-        // Default navigate to calendar
         navigate('calendar');
     </script>
 </body>
