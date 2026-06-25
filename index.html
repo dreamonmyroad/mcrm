@@ -6,8 +6,7 @@
     <meta name="theme-color" content="#0c1015">
     <meta name="apple-mobile-web-app-capable" content="yes">
     <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
-    <meta name="mobile-web-app-capable" content="yes">
-    <title>客户拜访管理</title>
+    <title>客户拜访管理 Pro</title>
     
     <link rel="manifest" href="data:application/json;base64,ewogICJuYW1lIjogIua1i+ivleiuoeahgeW4ruWkp+Wwj+eoiyIsCiAgInNob3J0X25hbWUiOiAi6K6h5oCB5biy6KeBIiwKICAic3RhcnRfdXJsIjogIi4iLAogICJkaXNwbGF5IjogInN0YW5kYWxvbmUiLAogICJiYWNrZ3JvdW5kX2NvbG9yIjogIiMwYzEwMTUiLAogICJ0aGVtZV9jb2xvciI6ICIjMGMxMDE1IiwKICAiaWNvbnMiOiBbCiAgICB7CiAgICAgICJzcmMiOiAiZGF0YTppbWFnZS9zdmcreG1sLCUzQ3N2ZyB4bWxucz0naHR0cDovL3d3dy53My5vcmcvMjAwMC9zdmcnIHZpZXdCb3g9JzAgMCA1MTIgNTEyJyUzRSUzQ3JlY3Qgd2lkdGg9JzUxMicgaGVpZ2h0PSc1MTInIGZpbGw9JyUyMzBjMTAxNScvJTNFJTNDcmVjdCB4PSczMCcgeT0nMzAnIHdpZHRoPSc0NTInIGhlaWdodD0nNDUyJyByeD0nNjAnIGZpbGw9JyUyMzAwZDRhYycvJTNFJTNDcGF0aCBkPSdNMjU2IDE3MGM0NC4xOCAwIDgwLTM1LjgyIDgtODBzLTM1LjgyLTgwLTgwLTgwLTgwIDM1LjgyLTgwIDgwIDM1LjgyIDgwIDgwIDgwek0yNTYgMjIwYy02Ni4yNyAwLTEyMCA1My43My0xMjAgMTIwdjYwaDI0MHYtNjBjMC02Ni4yNy01My43My0xMjAtMTIwLTEyMHonIGZpbGw9JyUyMzBjMTAxNScvJTNFJTNDL3N2ZyUzRSIsCiAgICAgICJzaXplcyI6ICI1MTJ4NTEyIiwKICAgICAgInR5cGUiOiAiaW1hZ2Uvc3ZnK3htbCIKICAgIH0KICBdCn0=">
 
@@ -27,6 +26,7 @@
             --warning: #ffa726;
             --danger: #ff5252;
             --info: #42a5f5;
+            --purple: #ab47bc;
             --text: #f1f5f9;
             --text-muted: #94a3b8;
             --text-dim: #64748b;
@@ -91,8 +91,6 @@
             padding: 0 16px;
         }
 
-        .header-title { font-size: 18px; font-weight: 600; }
-
         .app-body {
             flex: 1;
             overflow-y: auto;
@@ -143,8 +141,6 @@
             margin-bottom: 16px;
             overflow: hidden;
         }
-
-        .card-body { padding: 16px; }
 
         .btn {
             display: inline-flex;
@@ -214,6 +210,11 @@
             font-size: 11px;
             font-weight: 600;
         }
+        
+        .tag-pending { background: rgba(255, 167, 38, 0.15); color: var(--warning); }
+        .tag-done { background: rgba(0, 212, 170, 0.15); color: var(--accent); }
+        .tag-missed { background: rgba(255, 82, 82, 0.15); color: var(--danger); }
+        .tag-reschedule { background: rgba(66, 165, 245, 0.15); color: var(--info); }
 
         .calendar-grid {
             display: grid;
@@ -231,7 +232,12 @@
             display: flex;
             flex-direction: column;
             align-items: center;
+            cursor: pointer;
+            transition: background 0.2s;
         }
+        
+        .calendar-day.active { background: var(--accent-soft); }
+        .calendar-day.today { border: 1px solid var(--accent); }
         
         .day-num { font-size: 12px; font-weight: 500; margin-bottom: 2px; }
         
@@ -240,6 +246,29 @@
             height: 6px;
             border-radius: 50%;
             margin-top: 1px;
+        }
+
+        .view-switcher {
+            display: flex;
+            background: var(--bg);
+            border-radius: 10px;
+            padding: 4px;
+            margin-bottom: 16px;
+        }
+        .view-switcher-btn {
+            flex: 1;
+            text-align: center;
+            padding: 8px;
+            font-size: 13px;
+            font-weight: 600;
+            color: var(--text-muted);
+            border-radius: 8px;
+            cursor: pointer;
+            transition: all 0.2s;
+        }
+        .view-switcher-btn.active {
+            background: var(--accent);
+            color: #0c1015;
         }
 
         .modal-overlay {
@@ -301,59 +330,45 @@
         }
         .modal-footer .btn { flex: 1; }
 
-        .stat-card {
-            background: var(--card);
-            border-radius: 16px;
+        .empty-state {
+            text-align: center;
+            padding: 40px 20px;
+            color: var(--text-muted);
+        }
+        
+        .status-group {
+            margin-top: 16px;
             padding: 16px;
-            margin-bottom: 16px;
-            display: flex;
-            align-items: center;
-            gap: 16px;
-        }
-        
-        .stat-icon {
-            width: 48px;
-            height: 48px;
+            background: var(--bg);
             border-radius: 12px;
-            display: flex;
-            align-items: center;
-            justify-content: center;
+            border: 1px solid var(--border);
         }
         
-        .stat-value { font-size: 24px; font-weight: 700; }
-        .stat-label { font-size: 12px; color: var(--text-muted); }
-
-        .filter-bar {
+        .status-options {
             display: flex;
             gap: 8px;
-            padding: 0 0 16px 0;
-            overflow-x: auto;
-            -webkit-overflow-scrolling: touch;
+            margin-top: 8px;
         }
         
-        .filter-chip {
-            padding: 6px 12px;
-            background: var(--card);
-            border: 1px solid var(--border);
-            border-radius: 20px;
+        .status-option {
+            flex: 1;
+            padding: 8px;
+            text-align: center;
+            border-radius: 8px;
             font-size: 12px;
-            white-space: nowrap;
-            display: flex;
-            align-items: center;
-            gap: 6px;
+            cursor: pointer;
+            border: 1px solid var(--border);
+            color: var(--text-muted);
+            transition: all 0.2s;
         }
         
-        .filter-chip.active {
-            background: var(--accent-soft);
-            border-color: var(--accent);
-            color: var(--accent);
-        }
+        .status-option.active { border-color: var(--accent); color: var(--accent); background: var(--accent-soft); }
+        .status-option.active.done { border-color: var(--accent); color: var(--accent); }
+        .status-option.active.reschedule { border-color: var(--info); color: var(--info); background: rgba(66, 165, 245, 0.1); }
+        .status-option.active.missed { border-color: var(--danger); color: var(--danger); background: rgba(255, 82, 82, 0.1); }
 
-        .dot {
-            width: 8px;
-            height: 8px;
-            border-radius: 50%;
-        }
+        .required-star { color: var(--danger); margin-left: 2px; }
+
     </style>
 </head>
 <body>
@@ -361,40 +376,42 @@
     <div class="bg-pattern"></div>
     
     <div class="app-shell">
-        <!-- Header -->
         <header class="app-header">
             <div class="header-inner">
                 <div style="display: flex; align-items: center; gap: 10px;">
                     <div style="width: 32px; height: 32px; background: linear-gradient(135deg, var(--accent), #00b894); border-radius: 8px; display: flex; align-items: center; justify-content: center;">
                         <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="#0c1015" stroke-width="2.5"><path d="M17 21v-2a4 4 0 0 0-4-4H5a4 4 0 0 0-4 4v2"/><circle cx="9" cy="7" r="4"/></svg>
                     </div>
-                    <span class="header-title" id="pageTitle">工作台</span>
+                    <span class="header-title" id="pageTitle">拜访日历</span>
                 </div>
                 <div style="font-size: 13px; color: var(--text-muted);" id="todayDate"></div>
             </div>
         </header>
 
-        <!-- Main Content -->
         <main class="app-body">
             <!-- Dashboard View -->
-            <div class="view active" id="view-home">
+            <div class="view" id="view-home">
                 <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 12px; margin-bottom: 20px;">
-                    <div class="stat-card">
-                        <div class="stat-icon" style="background: var(--accent-soft); color: var(--accent);">
-                            <svg width="24" height="24" fill="none" stroke="currentColor" stroke-width="2"><path d="M17 21v-2a4 4 0 0 0-4-4H5a4 4 0 0 0-4 4v2"/><circle cx="9" cy="7" r="4"/></svg>
-                        </div>
-                        <div>
-                            <div class="stat-value" id="statClients">0</div>
-                            <div class="stat-label">客户总数</div>
+                    <div class="card" style="background: var(--card); border:none; border-radius:16px; margin:0;">
+                        <div style="padding: 16px; display: flex; align-items: center; gap: 16px;">
+                            <div class="avatar" style="background: var(--accent-soft); color: var(--accent); width: 48px; height: 48px;">
+                                <svg width="24" height="24" fill="none" stroke="currentColor" stroke-width="2"><path d="M17 21v-2a4 4 0 0 0-4-4H5a4 4 0 0 0-4 4v2"/><circle cx="9" cy="7" r="4"/></svg>
+                            </div>
+                            <div>
+                                <div style="font-size: 24px; font-weight: 700;" id="statClients">0</div>
+                                <div style="font-size: 12px; color: var(--text-muted);">客户总数</div>
+                            </div>
                         </div>
                     </div>
-                    <div class="stat-card">
-                        <div class="stat-icon" style="background: rgba(255, 167, 38, 0.15); color: var(--warning);">
-                            <svg width="24" height="24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="12" r="10"/><polyline points="12 6 12 12 16 14"/></svg>
-                        </div>
-                        <div>
-                            <div class="stat-value" id="statPending">0</div>
-                            <div class="stat-label">待拜访</div>
+                    <div class="card" style="background: var(--card); border:none; border-radius:16px; margin:0;">
+                         <div style="padding: 16px; display: flex; align-items: center; gap: 16px;">
+                            <div class="avatar" style="background: rgba(255, 167, 38, 0.15); color: var(--warning); width: 48px; height: 48px;">
+                                <svg width="24" height="24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="12" r="10"/><polyline points="12 6 12 12 16 14"/></svg>
+                            </div>
+                            <div>
+                                <div style="font-size: 24px; font-weight: 700;" id="statPending">0</div>
+                                <div style="font-size: 12px; color: var(--text-muted);">待拜访</div>
+                            </div>
                         </div>
                     </div>
                 </div>
@@ -402,11 +419,6 @@
                 <h3 style="margin-bottom: 12px; font-size: 16px;">近期计划</h3>
                 <div class="card" style="padding: 0;">
                     <div id="home-visits" style="min-height: 200px;"></div>
-                </div>
-                
-                <h3 style="margin: 20px 0 12px; font-size: 16px;">行业分布</h3>
-                <div class="card" style="padding: 0;">
-                     <div id="home-industries"></div>
                 </div>
             </div>
 
@@ -417,21 +429,45 @@
                         <input type="text" class="form-input" placeholder="搜索客户..." id="clientSearch" oninput="renderClients()" style="margin-bottom: 0; flex: 1;">
                         <button class="btn btn-primary" onclick="openModal('client')" style="width: auto; padding: 0 16px; white-space: nowrap;">新增</button>
                     </div>
-                    <div class="filter-bar" id="industry-filter-bar"></div>
                 </div>
                 <div id="clients-list" style="padding-bottom: 80px;"></div>
             </div>
 
             <!-- Calendar View -->
-            <div class="view" id="view-calendar">
-                <div class="card" style="padding: 16px; margin-bottom: 20px;">
+            <!-- Changed default view to active here just in case, but JS will handle it -->
+            <div class="view active" id="view-calendar">
+                <div class="view-switcher">
+                    <div class="view-switcher-btn active" data-mode="month">月</div>
+                    <div class="view-switcher-btn" data-mode="week">周</div>
+                    <div class="view-switcher-btn" data-mode="day">日</div>
+                </div>
+
+                <div id="cal-container-month">
                     <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 16px;">
                         <button class="btn btn-secondary btn-small" onclick="changeMonth(-1)"><</button>
                         <h3 style="font-size: 16px;" id="calTitle"></h3>
                         <button class="btn btn-secondary btn-small" onclick="changeMonth(1)">></button>
                     </div>
                     <div class="calendar-grid" id="calendarGrid"></div>
-                    <div style="margin-top: 16px; display: flex; flex-wrap: wrap; gap: 8px;" id="cal-legend"></div>
+                </div>
+
+                <div id="cal-container-week" style="display:none;">
+                     <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 16px;">
+                        <button class="btn btn-secondary btn-small" onclick="changeWeek(-1)"><</button>
+                        <h3 style="font-size: 16px;" id="calTitleWeek"></h3>
+                        <button class="btn btn-secondary btn-small" onclick="changeWeek(1)">></button>
+                    </div>
+                    <div id="weekList"></div>
+                </div>
+
+                <div id="cal-container-day" style="display:none;">
+                     <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 16px;">
+                        <button class="btn btn-secondary btn-small" onclick="changeDay(-1)"><</button>
+                        <h3 style="font-size: 16px;" id="calTitleDay"></h3>
+                        <button class="btn btn-secondary btn-small" onclick="changeDay(1)">></button>
+                    </div>
+                    <div id="dayList"></div>
+                    <button class="btn btn-primary" style="margin-top: 20px;" onclick="openModal('visit', null, getSelectedDayStr())">添加今日拜访</button>
                 </div>
             </div>
 
@@ -441,9 +477,8 @@
             </div>
         </main>
 
-        <!-- Bottom Navigation -->
         <nav class="bottom-nav">
-            <div class="nav-item-mobile active" data-view="home">
+            <div class="nav-item-mobile" data-view="home">
                 <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M3 9l9-7 9 7v11a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2z"/><polyline points="9 22 9 12 15 12 15 22"/></svg>
                 <span>首页</span>
             </div>
@@ -456,7 +491,8 @@
                     <svg width="28" height="28" viewBox="0 0 24 24" fill="none" stroke="#0c1015" stroke-width="2.5"><line x1="12" y1="5" x2="12" y2="19"/><line x1="5" y1="12" x2="19" y2="12"/></svg>
                 </div>
             </div>
-            <div class="nav-item-mobile" data-view="calendar">
+            <!-- Changed default active nav to calendar -->
+            <div class="nav-item-mobile active" data-view="calendar">
                 <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="3" y="4" width="18" height="18" rx="2" ry="2"/><line x1="16" y1="2" x2="16" y2="6"/><line x1="8" y1="2" x2="8" y2="6"/><line x1="3" y1="10" x2="21" y2="10"/></svg>
                 <span>日历</span>
             </div>
@@ -467,13 +503,12 @@
         </nav>
     </div>
 
-    <!-- Modal Overlay -->
     <div class="modal-overlay" id="modalOverlay">
         <div class="modal-content" onclick="event.stopPropagation()">
             <div class="modal-handle"></div>
             <div class="modal-header">
                 <span id="modalHeader">标题</span>
-                <button id="btnHeaderAction" onclick="openModal('industry')" style="font-size: 12px; color: var(--accent); background: none; border: none; display: none;">管理行业</button>
+                <button onclick="closeModal()" style="background:none; border:none; color:var(--text-muted); font-size:20px;">&times;</button>
             </div>
             <div class="modal-body" id="modalBody"></div>
             <div class="modal-footer" id="modalFooter">
@@ -483,11 +518,10 @@
         </div>
     </div>
 
-    <!-- PWA Service Worker Registration -->
     <script>
         if ('serviceWorker' in navigator) {
             const swCode = `
-                const CACHE_NAME = 'crm-v3'; 
+                const CACHE_NAME = 'crm-v6'; 
                 self.addEventListener('fetch', event => {
                     event.respondWith(fetch(event.request).catch(() => caches.match(event.request)));
                 });
@@ -498,14 +532,16 @@
     </script>
 
     <script>
-        // --- App Logic ---
+        // --- App State ---
         let data = { clients: [], industries: [], visits: [], records: [] };
         let currentMonth = new Date();
-        let activeFilter = null;
+        let currentWeek = new Date();
+        let currentDay = new Date();
+        let calendarMode = 'month';
 
         // --- Data Management ---
         const loadData = () => {
-            const stored = localStorage.getItem('crm_app_data');
+            const stored = localStorage.getItem('crm_app_data_v2');
             if (stored) data = JSON.parse(stored);
             else {
                 data.industries = [
@@ -514,18 +550,18 @@
                     { id: 3, name: '金融', color: '#66bb6a' }
                 ];
                 data.clients = [
-                    { id: 1, name: '上海科技集团', contact: '张总', industryId: 2, notes: '重点客户', avatar: '上' },
+                    { id: 1, name: '示例客户', contact: '张总', industryId: 2, notes: '重点客户', avatar: '示' },
                 ];
                 data.visits = [
-                    { id: 1, clientId: 1, date: getTodayStr(), status: 'pending', notes: '初次拜访' }
+                    { id: 1, clientId: 1, date: getTodayStr(), status: 'pending', notes: '初次拜访', detail: '', nextDate: '', nextGoal: '' }
                 ];
                 saveData();
             }
         };
 
-        const saveData = () => localStorage.setItem('crm_app_data', JSON.stringify(data));
+        const saveData = () => localStorage.setItem('crm_app_data_v2', JSON.stringify(data));
 
-        // --- Render Functions ---
+        // --- Render Home ---
         const renderHome = () => {
             const today = getTodayStr();
             const pending = data.visits.filter(v => v.date >= today && v.status === 'pending');
@@ -536,140 +572,218 @@
 
             const container = document.getElementById('home-visits');
             if (pending.length === 0) {
-                container.innerHTML = '<div style="padding: 40px; text-align: center; color: var(--text-muted);">暂无待办事项</div>';
+                container.innerHTML = '<div class="empty-state">暂无待办事项</div>';
             } else {
                 container.innerHTML = pending.slice(0, 5).map(v => {
                     const client = data.clients.find(c => c.id === v.clientId);
-                    const ind = data.industries.find(i => i.id === client?.industryId);
                     return `
-                        <div class="list-item" onclick="openVisitAction(${v.id})">
-                            <div class="avatar" style="background: ${ind?.color}15; color: ${ind?.color}">${client?.avatar || '?'}</div>
+                        <div class="list-item" onclick="openModal('visit_edit', ${v.id})">
+                            <div class="avatar" style="background: var(--accent-soft); color: var(--accent)">${client?.avatar || '?'}</div>
                             <div style="flex: 1">
                                 <div style="font-weight: 500;">${client?.name || '未知'}</div>
                                 <div style="font-size: 12px; color: var(--text-muted)">${v.notes}</div>
                             </div>
-                            <div style="font-size: 12px; color: var(--accent)">${formatDate(v.date)}</div>
+                            <span class="tag tag-pending">待拜访</span>
                         </div>
                     `;
                 }).join('');
             }
-
-            const indContainer = document.getElementById('home-industries');
-            indContainer.innerHTML = data.industries.map(ind => {
-                const count = data.clients.filter(c => c.industryId === ind.id).length;
-                return `
-                    <div class="list-item">
-                        <div class="dot" style="background: ${ind.color}"></div>
-                        <span style="flex:1">${ind.name}</span>
-                        <span style="color: var(--text-muted)">${count} 家</span>
-                    </div>
-                `;
-            }).join('');
         };
 
+        // --- Render Clients ---
         const renderClients = () => {
             const search = document.getElementById('clientSearch').value.toLowerCase();
-            const filtered = data.clients.filter(c => {
-                const matchSearch = c.name.toLowerCase().includes(search) || (c.contact && c.contact.toLowerCase().includes(search));
-                const matchFilter = !activeFilter || c.industryId === activeFilter;
-                return matchSearch && matchFilter;
-            });
-
+            const filtered = data.clients.filter(c => c.name.toLowerCase().includes(search));
             const listHtml = filtered.map(c => {
-                const ind = data.industries.find(i => i.id === c.industryId);
                 return `
                     <div class="card" style="margin-bottom: 12px;" onclick="openModal('client', ${c.id})">
                         <div style="display: flex; align-items: center; padding: 16px;">
-                            <div class="avatar" style="background: ${ind?.color}15; color: ${ind?.color}; margin-right: 12px;">${c.avatar}</div>
+                            <div class="avatar" style="background: var(--card-hover); color: var(--text); margin-right: 12px;">${c.avatar}</div>
                             <div style="flex: 1">
-                                <div style="font-weight: 600; margin-bottom: 4px;">${c.name}</div>
-                                <div style="font-size: 12px; color: var(--text-muted); display: flex; align-items: center; gap: 8px;">
-                                    <span>${c.contact || '暂无'}</span>
-                                    ${ind ? `<span class="tag" style="background: ${ind.color}15; color: ${ind.color}">${ind.name}</span>` : ''}
-                                </div>
+                                <div style="font-weight: 600;">${c.name}</div>
+                                <div style="font-size: 12px; color: var(--text-muted);">${c.contact || '暂无联系方式'}</div>
                             </div>
-                            <svg width="20" height="20" fill="none" stroke="var(--text-dim)" stroke-width="2"><polyline points="9 18 15 12 9 6"/></svg>
                         </div>
                     </div>
                 `;
             }).join('');
-            
-            document.getElementById('clients-list').innerHTML = listHtml || '<div style="text-align: center; padding: 40px; color: var(--text-muted)">无客户数据</div>';
-
-            const filterBar = document.getElementById('industry-filter-bar');
-            if (filterBar.children.length === 0) {
-                let chips = `<div class="filter-chip ${!activeFilter ? 'active' : ''}" onclick="setFilter(null)">全部</div>`;
-                data.industries.forEach(ind => {
-                    chips += `<div class="filter-chip ${activeFilter === ind.id ? 'active' : ''}" onclick="setFilter(${ind.id})" style="border-color: ${ind.color}30">
-                        <div class="dot" style="background: ${ind.color}"></div> ${ind.name}
-                    </div>`;
-                });
-                filterBar.innerHTML = chips;
-            }
+            document.getElementById('clients-list').innerHTML = listHtml || '<div class="empty-state">无客户数据</div>';
         };
 
+        // --- Render Calendar ---
         const renderCalendar = () => {
+            if (calendarMode === 'month') renderMonthView();
+            else if (calendarMode === 'week') renderWeekView();
+            else if (calendarMode === 'day') renderDayView();
+            
+            document.querySelectorAll('.view-switcher-btn').forEach(btn => {
+                btn.classList.toggle('active', btn.dataset.mode === calendarMode);
+            });
+        };
+
+        const renderMonthView = () => {
+            document.getElementById('cal-container-month').style.display = 'block';
+            document.getElementById('cal-container-week').style.display = 'none';
+            document.getElementById('cal-container-day').style.display = 'none';
+
             const year = currentMonth.getFullYear();
             const month = currentMonth.getMonth();
             document.getElementById('calTitle').innerText = `${year}年 ${month + 1}月`;
 
-            const legend = document.getElementById('cal-legend');
-            legend.innerHTML = data.industries.map(i => `<div style="display: flex; align-items: center; gap: 4px; font-size: 10px; color: var(--text-muted)"><div class="dot" style="background: ${i.color}"></div>${i.name}</div>`).join('');
-
             const firstDay = new Date(year, month, 1).getDay();
             const daysInMonth = new Date(year, month + 1, 0).getDate();
-            let html = ['日', '一', '二', '三', '四', '五', '六'].map(d => `<div style="text-align: center; font-size: 12px; color: var(--text-dim); padding: 8px 0;">${d}</div>`).join('');
+            let html = ['日', '一', '二', '三', '四', '五', '六'].map(d => `<div style="text-align: center; font-size: 12px; color: var(--text-dim); padding: 8px 0; background:var(--bg-secondary)">${d}</div>`).join('');
             
             for (let i = 0; i < firstDay; i++) {
-                html += `<div class="calendar-day" style="background: var(--bg-secondary)"></div>`;
+                html += `<div class="calendar-day" style="background: var(--bg-secondary); opacity:0.3"></div>`;
             }
 
             for (let d = 1; d <= daysInMonth; d++) {
                 const dateStr = `${year}-${String(month + 1).padStart(2, '0')}-${String(d).padStart(2, '0')}`;
                 const dayVisits = data.visits.filter(v => v.date === dateStr);
-                
-                let dotsHtml = '';
-                if (dayVisits.length > 0) {
-                    dotsHtml = '<div style="display: flex; gap: 2px; justify-content: center;">';
-                    dayVisits.slice(0, 3).forEach(v => {
-                        const client = data.clients.find(c => c.id === v.clientId);
-                        const ind = data.industries.find(i => i.id === client?.industryId);
-                        dotsHtml += `<div class="visit-dot" style="background: ${ind?.color || '#fff'}"></div>`;
-                    });
-                    dotsHtml += '</div>';
-                }
-
                 const isToday = dateStr === getTodayStr();
+                
                 html += `
-                    <div class="calendar-day" onclick="showDayVisits('${dateStr}')" style="${isToday ? 'border: 1px solid var(--accent); background: var(--accent-soft)' : ''}">
-                        <div class="day-num" style="${isToday ? 'color: var(--accent)' : ''}">${d}</div>
-                        ${dotsHtml}
+                    <div class="calendar-day ${isToday ? 'today' : ''}" onclick="handleDayClick('${dateStr}')">
+                        <div class="day-num" style="${isToday ? 'color: var(--accent); font-weight:700' : ''}">${d}</div>
+                        <div style="display: flex; gap: 2px; justify-content: center; flex-wrap: wrap;">
+                            ${dayVisits.slice(0, 3).map(v => {
+                                let color = '#ffa726'; // pending
+                                if(v.status === 'done') color = '#00d4aa';
+                                if(v.status === 'missed') color = '#ff5252';
+                                if(v.status === 'reschedule') color = '#42a5f5';
+                                return `<div class="visit-dot" style="background: ${color}"></div>`;
+                            }).join('')}
+                        </div>
                     </div>
                 `;
             }
             document.getElementById('calendarGrid').innerHTML = html;
         };
 
+        const renderWeekView = () => {
+            document.getElementById('cal-container-month').style.display = 'none';
+            document.getElementById('cal-container-week').style.display = 'block';
+            document.getElementById('cal-container-day').style.display = 'none';
+
+            const startOfWeek = new Date(currentWeek);
+            startOfWeek.setDate(startOfWeek.getDate() - startOfWeek.getDay());
+
+            const endOfWeek = new Date(startOfWeek);
+            endOfWeek.setDate(endOfWeek.getDate() + 6);
+
+            document.getElementById('calTitleWeek').innerText = `${(startOfWeek.getMonth()+1)}/${startOfWeek.getDate()} - ${(endOfWeek.getMonth()+1)}/${endOfWeek.getDate()}`;
+
+            let html = '';
+            for(let i=0; i<7; i++) {
+                const d = new Date(startOfWeek);
+                d.setDate(d.getDate() + i);
+                const dateStr = formatObjToStr(d);
+                const dayVisits = data.visits.filter(v => v.date === dateStr);
+                
+                html += `
+                    <div class="card" style="margin-bottom: 8px;">
+                        <div class="list-item" style="border-bottom: ${dayVisits.length > 0 ? '1px solid var(--border)' : 'none'}">
+                            <div style="font-weight: 600; width: 40px; color: ${dateStr === getTodayStr() ? 'var(--accent)' : 'inherit'}">${['日','一','二','三','四','五','六'][d.getDay()]}</div>
+                            <div style="color: var(--text-muted); font-size: 13px;">${d.getDate()}日</div>
+                            <button class="btn btn-small btn-secondary" style="margin-left:auto; padding: 4px 8px; font-size: 11px;" onclick="openModal('visit', null, '${dateStr}')">+</button>
+                        </div>
+                        <div>
+                            ${dayVisits.map(v => renderVisitItem(v)).join('')}
+                        </div>
+                    </div>
+                `;
+            }
+            document.getElementById('weekList').innerHTML = html;
+        };
+
+        const renderDayView = () => {
+            document.getElementById('cal-container-month').style.display = 'none';
+            document.getElementById('cal-container-week').style.display = 'none';
+            document.getElementById('cal-container-day').style.display = 'block';
+
+            const dateStr = formatObjToStr(currentDay);
+            document.getElementById('calTitleDay').innerText = `${currentDay.getMonth()+1}月${currentDay.getDate()}日`;
+
+            const dayVisits = data.visits.filter(v => v.date === dateStr);
+            
+            let html = '';
+            if(dayVisits.length === 0) html = '<div class="empty-state">暂无安排</div>';
+            else html = dayVisits.map(v => renderVisitItem(v)).join('');
+
+            document.getElementById('dayList').innerHTML = `<div class="card">${html}</div>`;
+        };
+
+        const renderVisitItem = (v) => {
+            const client = data.clients.find(c => c.id === v.clientId);
+            let statusClass = 'tag-pending';
+            let statusText = '待拜访';
+            if(v.status === 'done') { statusClass = 'tag-done'; statusText = '已拜访'; }
+            if(v.status === 'missed') { statusClass = 'tag-missed'; statusText = '未拜访'; }
+            if(v.status === 'reschedule') { statusClass = 'tag-reschedule'; statusText = '已改期'; }
+
+            return `
+                <div class="list-item" onclick="openModal('visit_edit', ${v.id})">
+                    <div style="flex:1">
+                        <div style="font-weight: 500">${client?.name || '未知'}</div>
+                        <div style="font-size: 12px; color: var(--text-muted)">${v.notes || '无备注'}</div>
+                    </div>
+                    <span class="tag ${statusClass}">${statusText}</span>
+                </div>
+            `;
+        };
+
+        const handleDayClick = (dateStr) => {
+            switchCalendarMode('day');
+            currentDay = new Date(dateStr.replace(/-/g, '/'));
+            renderCalendar();
+        };
+        
+        const switchCalendarMode = (mode) => {
+            calendarMode = mode;
+            renderCalendar();
+        };
+
+        const changeMonth = (delta) => {
+            currentMonth.setMonth(currentMonth.getMonth() + delta);
+            renderMonthView();
+        };
+
+        const changeWeek = (delta) => {
+            currentWeek.setDate(currentWeek.getDate() + (7 * delta));
+            renderWeekView();
+        };
+
+        const changeDay = (delta) => {
+            currentDay.setDate(currentDay.getDate() + delta);
+            renderDayView();
+        };
+
+        const getSelectedDayStr = () => formatObjToStr(currentDay);
+
+        // --- Records ---
         const renderRecords = () => {
-            const sorted = data.records.sort((a,b) => new Date(b.date) - new Date(a.date));
-            const html = sorted.map(r => {
-                const client = data.clients.find(c => c.id === r.clientId);
+            const sorted = data.visits.filter(v => v.status === 'done').sort((a,b) => new Date(b.date) - new Date(a.date));
+            
+            const html = sorted.map(v => {
+                const client = data.clients.find(c => c.id === v.clientId);
                 return `
                     <div class="card" style="margin-bottom: 12px;">
                         <div style="padding: 16px;">
                             <div style="display: flex; justify-content: space-between; margin-bottom: 8px;">
                                 <span style="font-weight: 600">${client?.name || '未知'}</span>
-                                <span style="font-size: 12px; color: var(--text-muted)">${r.date}</span>
+                                <span style="font-size: 12px; color: var(--text-muted)">${v.date}</span>
                             </div>
-                            <div style="font-size: 14px; color: var(--text-muted)">${r.content}</div>
+                            <div style="font-size: 14px; color: var(--text)">${v.detail || '无详情记录'}</div>
+                            ${v.nextDate ? `<div style="margin-top:8px; font-size: 12px; color: var(--accent);">下次跟进: ${v.nextDate} - ${v.nextGoal}</div>` : ''}
                         </div>
                     </div>
                 `;
             }).join('');
-            document.getElementById('records-list').innerHTML = html || '<div style="text-align: center; padding: 40px; color: var(--text-muted)">暂无记录</div>';
+            document.getElementById('records-list').innerHTML = html || '<div class="empty-state">暂无拜访记录</div>';
         };
 
-        // --- Interactions ---
+        // --- Navigation ---
         const navigate = (viewId) => {
             document.querySelectorAll('.view').forEach(v => v.classList.remove('active'));
             document.getElementById(`view-${viewId}`).classList.add('active');
@@ -686,120 +800,117 @@
             document.getElementById('pageTitle').innerText = titles[viewId];
         };
 
-        const setFilter = (id) => {
-            activeFilter = id;
-            document.querySelectorAll('.filter-chip').forEach(el => {
-                const isAll = el.innerText.includes('全部');
-                const isTarget = el.innerText.includes(data.industries.find(i => i.id === id)?.name || '');
-                el.classList.remove('active');
-                if ((isAll && id === null) || isTarget) el.classList.add('active');
-            });
-            renderClients();
-        };
-
-        const changeMonth = (delta) => {
-            currentMonth.setMonth(currentMonth.getMonth() + delta);
-            renderCalendar();
-        };
-
-        // --- Modal System ---
-        window.openModal = (type, id = null) => {
+        // --- Modals ---
+        window.openModal = (type, id = null, dateOverride = null) => {
             const overlay = document.getElementById('modalOverlay');
             const body = document.getElementById('modalBody');
             const header = document.getElementById('modalHeader');
             const saveBtn = document.getElementById('modalSaveBtn');
-            const headerBtn = document.getElementById('btnHeaderAction');
             
-            headerBtn.style.display = 'none';
-            saveBtn.style.display = 'block';
             saveBtn.onclick = () => saveModal(type, id);
 
             if (type === 'client') {
                 header.innerText = id ? '编辑客户' : '新增客户';
-                headerBtn.style.display = 'block';
-                
-                const industryOptions = data.industries.map(i => `<option value="${i.id}">${i.name}</option>`).join('');
-                let clientData = { name: '', contact: '', industryId: '', notes: '' };
-                if (id) {
-                    const c = data.clients.find(x => x.id === id);
-                    if (c) clientData = c;
-                }
-
-                let deleteBtnHtml = id ? `<button class="btn btn-danger" style="margin-top: 20px;" onclick="deleteClient(${id})">删除客户</button>` : '';
+                let clientData = { name: '', contact: '', notes: '' };
+                if (id) clientData = data.clients.find(c => c.id === id);
 
                 body.innerHTML = `
-                    <input type="hidden" id="edit_id" value="${id || ''}">
-                    <div class="form-group">
-                        <label>客户名称 *</label>
-                        <input type="text" class="form-input" id="c_name" value="${clientData.name}" placeholder="必填">
-                    </div>
-                    <div class="form-group">
-                        <label>联系人</label>
-                        <input type="text" class="form-input" id="c_contact" value="${clientData.contact || ''}" placeholder="姓名 电话">
-                    </div>
-                    <div class="form-group">
-                        <label>所属行业</label>
-                        <select class="form-select" id="c_industry"><option value="">请选择</option>${industryOptions}</select>
-                    </div>
-                    <div class="form-group">
-                        <label>备注</label>
-                        <textarea class="form-input" id="c_notes" placeholder="备注信息">${clientData.notes || ''}</textarea>
-                    </div>
-                    ${deleteBtnHtml}
+                    <input type="text" class="form-input" id="c_name" value="${clientData.name}" placeholder="客户名称 *">
+                    <input type="text" class="form-input" id="c_contact" value="${clientData.contact || ''}" placeholder="联系人">
+                    <textarea class="form-input" id="c_notes" placeholder="备注">${clientData.notes || ''}</textarea>
+                    ${id ? `<button class="btn btn-danger" style="margin-top: 10px;" onclick="deleteClient(${id})">删除客户</button>` : ''}
                 `;
-                if (clientData.industryId) document.getElementById('c_industry').value = clientData.industryId;
             } 
             else if (type === 'visit') {
-                header.innerText = '新建拜访';
+                header.innerText = '新建拜访计划';
                 const clientOptions = data.clients.map(c => `<option value="${c.id}">${c.name}</option>`).join('');
                 body.innerHTML = `
-                    <div class="form-group">
-                        <label>选择客户</label>
-                        <select class="form-select" id="m_client">${clientOptions}</select>
-                    </div>
-                    <div class="form-group">
-                        <label>计划日期</label>
-                        <input type="date" class="form-input" id="m_date" value="${getTodayStr()}">
-                    </div>
-                    <div class="form-group">
-                        <label>备注</label>
-                        <textarea class="form-input" id="m_notes" placeholder="拜访目的..."></textarea>
-                    </div>
+                    <select class="form-select" id="m_client"><option value="">选择客户 *</option>${clientOptions}</select>
+                    <input type="date" class="form-input" id="m_date" value="${dateOverride || getTodayStr()}">
+                    <textarea class="form-input" id="m_notes" placeholder="拜访目的..."></textarea>
                 `;
-            } 
-            else if (type === 'industry') {
-                header.innerText = '行业管理';
-                saveBtn.style.display = 'none';
-                
-                body.innerHTML = `
-                    <div style="display: flex; gap: 10px; margin-bottom: 16px;">
-                        <input type="text" class="form-input" id="i_name" placeholder="新行业名称" style="margin-bottom:0; flex:1">
-                        <input type="color" id="i_color" value="#42a5f5" style="width: 50px; height: 48px; border: none; border-radius: 12px; cursor: pointer;">
-                    </div>
-                    <button class="btn btn-secondary" onclick="addIndustry()">添加行业</button>
-                    <hr style="border-color: var(--border); margin: 16px 0;">
-                    <div id="industry_list">
-                        ${data.industries.map(ind => `
-                            <div class="list-item" style="padding: 10px 0;">
-                                <div class="dot" style="background: ${ind.color}"></div>
-                                <span style="flex:1">${ind.name}</span>
-                                <button onclick="deleteIndustry(${ind.id})" style="color: var(--danger); background: none; border: none;">删除</button>
-                            </div>
-                        `).join('')}
-                    </div>
-                `;
-            } 
-            else if (type === 'record') {
+            }
+            else if (type === 'visit_edit') {
                 const visit = data.visits.find(v => v.id === id);
-                header.innerText = '完成拜访';
-                const client = data.clients.find(c => c.id === visit?.clientId);
+                const client = data.clients.find(c => c.id === visit.clientId);
+                header.innerText = '拜访详情';
+
                 body.innerHTML = `
-                    <p style="margin-bottom: 12px; color: var(--text-muted)">客户：${client?.name}</p>
-                    <div class="form-group">
-                        <label>拜访记录 *</label>
-                        <textarea class="form-input" id="r_content" placeholder="记录本次拜访成果..." style="height: 120px;"></textarea>
+                    <div style="margin-bottom: 16px; padding: 12px; background: var(--bg); border-radius: 12px;">
+                        <div style="font-weight: 600; margin-bottom: 4px;">${client?.name || '未知'}</div>
+                        <div style="font-size: 12px; color: var(--text-muted);">计划时间: ${visit.date}</div>
+                    </div>
+
+                    <label style="font-size: 12px; color: var(--text-muted);">当前状态</label>
+                    <div class="status-options">
+                        <div class="status-option ${visit.status === 'done' ? 'active done' : ''}" onclick="setStatus('done')">已拜访</div>
+                        <div class="status-option ${visit.status === 'reschedule' ? 'active reschedule' : ''}" onclick="setStatus('reschedule')">改期</div>
+                        <div class="status-option ${visit.status === 'missed' ? 'active missed' : ''}" onclick="setStatus('missed')">未拜访</div>
+                    </div>
+                    <input type="hidden" id="v_status" value="${visit.status}">
+
+                    <!-- Common Description Field -->
+                    <div id="desc_container" style="margin-top: 16px;">
+                        <label style="font-size: 12px; color: var(--text-muted);" id="desc_label">情况说明</label>
+                        <textarea class="form-input" id="v_detail" style="margin-top:8px; margin-bottom:0;" placeholder="请输入情况说明">${visit.detail || ''}</textarea>
+                    </div>
+
+                    <!-- Done Specific Fields -->
+                    <div id="follow_up_fields" style="margin-top: 16px; display: ${visit.status === 'done' ? 'block' : 'none'};">
+                        <div class="status-group" style="margin-top:0;">
+                            <label style="font-size: 12px; color: var(--text-muted); margin-top: 12px; display:block;">下次跟进</label>
+                            <input type="date" class="form-input" id="v_next_date" value="${visit.nextDate || ''}">
+                            <input type="text" class="form-input" id="v_next_goal" value="${visit.nextGoal || ''}" placeholder="跟进目标">
+                        </div>
+                    </div>
+
+                    <!-- Reschedule Specific Fields -->
+                    <div id="reschedule_date_field" style="margin-top: 16px; display: ${visit.status === 'reschedule' ? 'block' : 'none'};">
+                         <div class="status-group" style="margin-top:0;">
+                            <label style="font-size: 12px; color: var(--text-muted);">改期至</label>
+                            <input type="date" class="form-input" id="v_reschedule_date" value="${visit.date}">
+                        </div>
                     </div>
                 `;
+                
+                window.setStatus = (status) => {
+                    document.getElementById('v_status').value = status;
+                    
+                    // UI Toggles
+                    document.querySelectorAll('.status-option').forEach(el => {
+                        el.classList.remove('active', 'done', 'reschedule', 'missed');
+                        if(el.getAttribute('onclick').includes(status)) {
+                            el.classList.add('active');
+                            if(status === 'done') el.classList.add('done');
+                            if(status === 'reschedule') el.classList.add('reschedule');
+                            if(status === 'missed') el.classList.add('missed');
+                        }
+                    });
+
+                    document.getElementById('follow_up_fields').style.display = status === 'done' ? 'block' : 'none';
+                    document.getElementById('reschedule_date_field').style.display = status === 'reschedule' ? 'block' : 'none';
+                    
+                    // Handle Description Field Label and Required State
+                    const label = document.getElementById('desc_label');
+                    const input = document.getElementById('v_detail');
+                    
+                    if (status === 'missed') {
+                        label.innerHTML = '未拜访原因 <span class="required-star">*</span>';
+                        input.placeholder = '请填写未拜访原因（必填）';
+                        input.style.borderColor = 'var(--danger)'; // Visual cue
+                    } else if (status === 'done') {
+                        label.innerText = '拜访详情';
+                        input.placeholder = '记录本次拜访成果...';
+                        input.style.borderColor = 'var(--border)';
+                    } else if (status === 'reschedule') {
+                        label.innerText = '改期原因';
+                        input.placeholder = '请填写改期原因...';
+                        input.style.borderColor = 'var(--border)';
+                    }
+                };
+                
+                // Initialize UI
+                window.setStatus(visit.status);
             }
 
             overlay.classList.add('active');
@@ -810,59 +921,65 @@
         const saveModal = (type, id) => {
             if (type === 'client') {
                 const name = document.getElementById('c_name').value;
-                const contact = document.getElementById('c_contact').value;
-                const industryId = document.getElementById('c_industry').value;
-                const notes = document.getElementById('c_notes').value;
-
                 if (!name) return alert('请填写客户名称');
 
                 if (id) {
-                    const index = data.clients.findIndex(c => c.id === parseInt(id));
-                    if (index > -1) {
-                        data.clients[index] = { ...data.clients[index], name, contact, industryId: parseInt(industryId) || null, notes };
-                    }
+                    const c = data.clients.find(x => x.id === id);
+                    Object.assign(c, { name, contact: document.getElementById('c_contact').value, notes: document.getElementById('c_notes').value });
                 } else {
-                    data.clients.push({
-                        id: Date.now(),
-                        name, contact, industryId: parseInt(industryId) || null, notes,
-                        avatar: name.charAt(0)
-                    });
+                    data.clients.push({ id: Date.now(), name, contact: document.getElementById('c_contact').value, notes: document.getElementById('c_notes').value, avatar: name.charAt(0) });
                 }
-                
-                saveData();
-                closeModal();
-                renderClients(); renderHome();
+                saveData(); closeModal(); renderClients(); renderHome();
             } 
             else if (type === 'visit') {
                 const clientId = parseInt(document.getElementById('m_client').value);
                 const date = document.getElementById('m_date').value;
-                const notes = document.getElementById('m_notes').value;
-                if(!clientId || !date) return alert('请填写完整');
-                data.visits.push({ id: Date.now(), clientId, date, notes, status: 'pending' });
-                saveData();
-                closeModal();
-                navigate('home');
+                if(!clientId || !date) return alert('请选择客户和日期');
+                
+                data.visits.push({ id: Date.now(), clientId, date, status: 'pending', notes: document.getElementById('m_notes').value, detail: '', nextDate: '', nextGoal: '' });
+                saveData(); closeModal(); renderHome(); renderCalendar();
             }
-            else if (type === 'record') {
-                const content = document.getElementById('r_content').value;
-                if(!content) return alert('请填写记录');
+            else if (type === 'visit_edit') {
                 const visit = data.visits.find(v => v.id === id);
-                if(visit) {
-                    visit.status = 'done';
-                    data.records.push({ id: Date.now(), clientId: visit.clientId, date: getTodayStr(), content });
-                    saveData();
-                    closeModal();
-                    navigate('records');
+                const status = document.getElementById('v_status').value;
+                const detail = document.getElementById('v_detail').value;
+                
+                // Validation
+                if (status === 'missed' && !detail) {
+                    return alert('未拜访情况下，情况说明为必填项');
                 }
+
+                visit.status = status;
+                visit.detail = detail;
+
+                if (status === 'done') {
+                    visit.nextDate = document.getElementById('v_next_date').value;
+                    visit.nextGoal = document.getElementById('v_next_goal').value;
+                    
+                    if (visit.nextDate) {
+                        data.visits.push({
+                            id: Date.now() + 1,
+                            clientId: visit.clientId,
+                            date: visit.nextDate,
+                            status: 'pending',
+                            notes: `跟进: ${visit.nextGoal}`,
+                            detail: '', nextDate: '', nextGoal: ''
+                        });
+                    }
+                } else if (status === 'reschedule') {
+                    const newDate = document.getElementById('v_reschedule_date').value;
+                    if(newDate) visit.date = newDate;
+                    visit.status = 'pending'; 
+                }
+
+                saveData(); closeModal(); renderHome(); renderCalendar(); renderRecords();
             }
         };
-
+        
         window.deleteClient = (id) => {
-            if(confirm('确定要删除该客户吗？\n\n注意：该客户名下的所有拜访计划和拜访记录也将一并删除！')) {
+            if(confirm('删除客户将同时删除相关拜访记录，确定吗？')) {
                 data.clients = data.clients.filter(c => c.id !== id);
                 data.visits = data.visits.filter(v => v.clientId !== id);
-                data.records = data.records.filter(r => r.clientId !== id);
-                
                 saveData();
                 closeModal();
                 renderClients();
@@ -870,54 +987,24 @@
             }
         };
 
-        const addIndustry = () => {
-            const name = document.getElementById('i_name').value;
-            const color = document.getElementById('i_color').value;
-            if(!name) return;
-            data.industries.push({ id: Date.now(), name, color });
-            saveData();
-            openModal('industry');
-            document.getElementById('industry-filter-bar').innerHTML = ''; 
-        }
-
-        const deleteIndustry = (id) => {
-            if(confirm('确定删除该行业吗？')) {
-                data.industries = data.industries.filter(i => i.id !== id);
-                saveData();
-                openModal('industry');
-                document.getElementById('industry-filter-bar').innerHTML = '';
-            }
-        }
-
-        const openVisitAction = (id) => {
-            const visit = data.visits.find(v => v.id === id);
-            const client = data.clients.find(c => c.id === visit.clientId);
-            if(confirm(`确定要完成对【${client.name}】的拜访吗？`)) {
-                openModal('record', id);
-            }
-        }
-
-        const showDayVisits = (dateStr) => {
-            const visits = data.visits.filter(v => v.date === dateStr);
-            if (visits.length === 0) return;
-            const content = visits.map(v => {
-                const c = data.clients.find(x => x.id === v.clientId);
-                return `${c?.name}: ${v.notes || '无备注'}`;
-            }).join('\n');
-            alert(`当日拜访计划:\n${content}`);
-        };
-
+        // --- Helpers ---
         const getTodayStr = () => new Date().toISOString().split('T')[0];
-        const formatDate = (str) => str.substring(5).replace('-', '/') + '日';
+        const formatObjToStr = (d) => `${d.getFullYear()}-${String(d.getMonth()+1).padStart(2, '0')}-${String(d.getDate()).padStart(2, '0')}`;
 
         // --- Init ---
         document.querySelectorAll('.nav-item-mobile').forEach(el => {
             if(el.dataset.view) el.addEventListener('click', () => navigate(el.dataset.view));
         });
+        
+        document.querySelectorAll('.view-switcher-btn').forEach(btn => {
+            btn.addEventListener('click', () => switchCalendarMode(btn.dataset.mode));
+        });
+
         document.getElementById('modalOverlay').addEventListener('click', closeModal);
 
         loadData();
-        navigate('home');
+        // Default navigate to calendar
+        navigate('calendar');
     </script>
 </body>
 </html>
