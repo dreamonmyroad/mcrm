@@ -8,7 +8,7 @@
     <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
     <title>客户拜访管理 Pro</title>
     
-    <link rel="manifest" href="data:application/json;base64,ewogICJuYW1lIjogIua1i+ivleiuoeahgeW4ruWkp+Wwj+eoiyIsCiAgInNob3J0X25hbWUiOiAi6K6h5oCB5biy6KeBIiwKICAic3RhcnRfdXJsIjogIi4iLAogICJkaXNwbGF5IjogInN0YW5kYWxvbmUiLAogICJiYWNrZ3JvdW5kX2NvbG9yIjogIiMwYzEwMTUiLAogICJ0aGVtZV9jb2xvciI6ICIjMGMxMDE1IiwKICAiaWNvbnMiOiBbCiAgICB7CiAgICAgICJzcmMiOiAiZGF0YTppbWFnZS9zdmcreG1sLCUzQ3N2ZyB4bWxucz0naHR0cDovL3d3dy53My5vcmcvMjAwMC9zdmcnIHZpZXdCb3g9JzAgMCA1MTIgNTEyJyUzRSUzQ3JlY3Qgd2lkdGg9JzUxMicgaGVpZ2h0PSc1MTInIGZpbGw9JyUyMzBjMTAxNScvJTNFJTNDcmVjdCB4PSczMCcgeT0nMzAnIHdpZHRoPSc0NTInIGhlaWdodD0nNDUyJyByeD0nNjAnIGZpbGw9JyUyMzAwZDRhYycvJTNFJTNDcGF0aCBkPSdNMjU2IDE3MGM0NC4xOCAwIDgwLTM1LjgyIDgtODBzLTM1LjgyLTgwLTgwLTgwLTgwIDM1LjgyLTgwIDgwIDM1LjgyIDgwIDgwIDgwek0yNTYgMjIwYy02Ni4yNyAwLTEyMCA1My43My0xMjAgMTIwdjYwaDI0MHYtNjBjMC02Ni4yNy01My43My0xMjAtMTIwLTEyMHonIGZpbGw9JyUyMzBjMTAxNScvJTNFJTNDL3N2ZyUzRSIsCiAgICAgICJzaXplcyI6ICI1MTJ4NTEyIiwKICAgICAgInR5cGUiOiAiaW1hZ2Uvc3ZnK3htbCIKICAgIH0KICBdCn0=">
+    <link rel="manifest" href="data:application/json;base64,ewogICJuYW1lIjogIua1i+ivleiuoeahgeW4ruWkp+Wwj+eoiyIsCiAgInNob3J0X25hbWUiOiAi6K6h5oCB5biy6KeBIiwKICAic3RhcnRfdXJsIjogIi4iLAogICJkaXNwbGF5IjogInN0YW5kYWxvbmUiLAogICJiYWNrZ3JvdW5kX2NvbG9yIjogIiMwYzEwMTUiLAogICJ0aGVtZV9jb2xvciI6ICIjMGMxMDE1Igp9">
 
     <script src="https://cdn.tailwindcss.com"></script>
     <link href="https://fonts.googleapis.com/css2?family=Space+Grotesk:wght@400;500;600;700&family=IBM+Plex+Sans:wght@300;400;500;600&display=swap" rel="stylesheet">
@@ -27,6 +27,8 @@
             --danger: #ff5252;
             --info: #42a5f5;
             --purple: #ab47bc;
+            --important: #ff5252;
+            --normal: #607d8b;
             --text: #f1f5f9;
             --text-muted: #94a3b8;
             --text-dim: #64748b;
@@ -215,6 +217,8 @@
         .tag-done { background: rgba(0, 212, 170, 0.15); color: var(--accent); }
         .tag-missed { background: rgba(255, 82, 82, 0.15); color: var(--danger); }
         .tag-reschedule { background: rgba(66, 165, 245, 0.15); color: var(--info); }
+        .tag-important { background: rgba(255, 82, 82, 0.15); color: var(--important); }
+        .tag-normal { background: rgba(96, 125, 139, 0.15); color: var(--normal); }
 
         .calendar-grid {
             display: grid;
@@ -368,6 +372,46 @@
         .status-option.active.missed { border-color: var(--danger); color: var(--danger); background: rgba(255, 82, 82, 0.1); }
 
         .required-star { color: var(--danger); margin-left: 2px; }
+        
+        .ind-row {
+            display: flex;
+            align-items: center;
+            padding: 8px;
+            background: var(--card);
+            border-radius: 8px;
+            margin-bottom: 8px;
+        }
+        .ind-row input { background: transparent; border: none; color: var(--text); width: 100%; }
+        .ind-row input:focus { outline: none; }
+
+        /* Filter Bar Styles */
+        .filter-bar {
+            display: flex;
+            gap: 8px;
+            overflow-x: auto;
+            padding-bottom: 12px;
+            margin-bottom: 8px;
+            -webkit-overflow-scrolling: touch;
+        }
+        
+        .filter-chip {
+            padding: 6px 14px;
+            background: var(--bg-secondary);
+            border: 1px solid var(--border);
+            border-radius: 20px;
+            font-size: 12px;
+            font-weight: 500;
+            white-space: nowrap;
+            cursor: pointer;
+            transition: all 0.2s;
+            color: var(--text-muted);
+        }
+        
+        .filter-chip.active {
+            background: var(--accent);
+            color: #0c1015;
+            border-color: var(--accent);
+        }
 
     </style>
 </head>
@@ -389,6 +433,7 @@
         </header>
 
         <main class="app-body">
+            <!-- Dashboard View -->
             <div class="view" id="view-home">
                 <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 12px; margin-bottom: 20px;">
                     <div class="card" style="background: var(--card); border:none; border-radius:16px; margin:0;">
@@ -421,9 +466,15 @@
                 </div>
             </div>
 
+            <!-- Clients View -->
             <div class="view" id="view-clients">
                 <div style="position: sticky; top: 0; background: var(--bg); z-index: 10; padding-bottom: 12px;">
-                    <div style="display: flex; gap: 10px; margin-bottom: 8px;">
+                    
+                    <div id="client-filter-bar" class="filter-bar">
+                        <!-- Rendered by JS -->
+                    </div>
+
+                    <div style="display: flex; gap: 10px;">
                         <input type="text" class="form-input" placeholder="搜索客户..." id="clientSearch" oninput="renderClients()" style="margin-bottom: 0; flex: 1;">
                         <button class="btn btn-primary" onclick="openModal('client')" style="width: auto; padding: 0 16px; white-space: nowrap;">新增</button>
                     </div>
@@ -431,6 +482,7 @@
                 <div id="clients-list" style="padding-bottom: 80px;"></div>
             </div>
 
+            <!-- Calendar View -->
             <div class="view active" id="view-calendar">
                 <div class="view-switcher">
                     <div class="view-switcher-btn active" data-mode="month">月</div>
@@ -467,6 +519,7 @@
                 </div>
             </div>
 
+            <!-- Records View -->
             <div class="view" id="view-records">
                 <div id="records-list" style="padding-bottom: 80px;"></div>
             </div>
@@ -515,7 +568,7 @@
     <script>
         if ('serviceWorker' in navigator) {
             const swCode = `
-                const CACHE_NAME = 'crm-v8-flow'; 
+                const CACHE_NAME = 'crm-v9'; 
                 self.addEventListener('fetch', event => {
                     event.respondWith(fetch(event.request).catch(() => caches.match(event.request)));
                 });
@@ -532,19 +585,21 @@
         let currentWeek = new Date();
         let currentDay = new Date();
         let calendarMode = 'month';
+        let activeClientFilter = 'all'; // 'all' or industry ID
 
         // --- Data Management ---
         const loadData = () => {
-            const stored = localStorage.getItem('crm_app_data_v2');
+            const stored = localStorage.getItem('crm_app_data_v3');
             if (stored) data = JSON.parse(stored);
             else {
                 data.industries = [
-                    { id: 1, name: '制造业', color: '#42a5f5' },
-                    { id: 2, name: 'IT互联网', color: '#ab47bc' },
-                    { id: 3, name: '金融', color: '#66bb6a' }
+                    { id: 1, name: '制造业' },
+                    { id: 2, name: 'IT互联网' },
+                    { id: 3, name: '金融' },
+                    { id: 4, name: '医疗健康' }
                 ];
                 data.clients = [
-                    { id: 1, name: '示例客户', contact: '张总', industryId: 2, notes: '重点客户', avatar: '示' },
+                    { id: 1, name: '示例客户', contact: '张总', industryId: 2, level: 'important', notes: '重点客户', avatar: '示' },
                 ];
                 data.visits = [
                     { id: 1, clientId: 1, date: getTodayStr(), status: 'pending', notes: '初次拜访', detail: '', nextDate: '', nextGoal: '' }
@@ -553,7 +608,7 @@
             }
         };
 
-        const saveData = () => localStorage.setItem('crm_app_data_v2', JSON.stringify(data));
+        const saveData = () => localStorage.setItem('crm_app_data_v3', JSON.stringify(data));
 
         // --- Render Home ---
         const renderHome = () => {
@@ -570,11 +625,12 @@
             } else {
                 container.innerHTML = pending.slice(0, 5).map(v => {
                     const client = data.clients.find(c => c.id === v.clientId);
+                    const levelTag = client?.level === 'important' ? '<span class="tag tag-important" style="margin-left:6px">重要</span>' : '';
                     return `
                         <div class="list-item" onclick="openModal('visit_edit', ${v.id})">
                             <div class="avatar" style="background: var(--accent-soft); color: var(--accent)">${client?.avatar || '?'}</div>
                             <div style="flex: 1">
-                                <div style="font-weight: 500;">${client?.name || '未知'}</div>
+                                <div style="font-weight: 500;">${client?.name || '未知'} ${levelTag}</div>
                                 <div style="font-size: 12px; color: var(--text-muted)">${v.notes}</div>
                             </div>
                             <span class="tag tag-pending">待拜访</span>
@@ -586,22 +642,52 @@
 
         // --- Render Clients ---
         const renderClients = () => {
+            // 1. Render Filter Bar
+            const filterContainer = document.getElementById('client-filter-bar');
+            const counts = { all: data.clients.length };
+            data.industries.forEach(ind => {
+                counts[ind.id] = data.clients.filter(c => c.industryId === ind.id).length;
+            });
+
+            let filterHtml = `<div class="filter-chip ${activeClientFilter === 'all' ? 'active' : ''}" onclick="setClientFilter('all')">全部 (${counts.all})</div>`;
+            filterHtml += data.industries.map(ind => 
+                `<div class="filter-chip ${activeClientFilter === ind.id ? 'active' : ''}" onclick="setClientFilter(${ind.id})">${ind.name} (${counts[ind.id] || 0})</div>`
+            ).join('');
+            filterContainer.innerHTML = filterHtml;
+
+            // 2. Render List
             const search = document.getElementById('clientSearch').value.toLowerCase();
-            const filtered = data.clients.filter(c => c.name.toLowerCase().includes(search));
+            const filtered = data.clients.filter(c => {
+                const matchSearch = c.name.toLowerCase().includes(search);
+                const matchFilter = (activeClientFilter === 'all' || c.industryId === activeClientFilter);
+                return matchSearch && matchFilter;
+            });
+
             const listHtml = filtered.map(c => {
+                const ind = data.industries.find(i => i.id === c.industryId);
+                const levelTag = c.level === 'important' ? '<span class="tag tag-important">重要</span>' : '<span class="tag tag-normal">一般</span>';
                 return `
                     <div class="card" style="margin-bottom: 12px;" onclick="openModal('client', ${c.id})">
                         <div style="display: flex; align-items: center; padding: 16px;">
                             <div class="avatar" style="background: var(--card-hover); color: var(--text); margin-right: 12px;">${c.avatar}</div>
                             <div style="flex: 1">
-                                <div style="font-weight: 600;">${c.name}</div>
-                                <div style="font-size: 12px; color: var(--text-muted);">${c.contact || '暂无联系方式'}</div>
+                                <div style="font-weight: 600; margin-bottom: 4px;">${c.name} ${levelTag}</div>
+                                <div style="display: flex; gap: 8px; font-size: 12px; color: var(--text-muted);">
+                                    <span>${ind?.name || '未分类'}</span>
+                                    <span>|</span>
+                                    <span>${c.contact || '暂无联系'}</span>
+                                </div>
                             </div>
                         </div>
                     </div>
                 `;
             }).join('');
             document.getElementById('clients-list').innerHTML = listHtml || '<div class="empty-state">无客户数据</div>';
+        };
+
+        const setClientFilter = (id) => {
+            activeClientFilter = id;
+            renderClients();
         };
 
         // --- Render Calendar ---
@@ -795,7 +881,7 @@
         };
 
         // --- Modals ---
-        window.openModal = (type, id = null, dateOverride = null, preselectedClientId = null) => {
+        window.openModal = (type, id = null, dateOverride = null) => {
             const overlay = document.getElementById('modalOverlay');
             const body = document.getElementById('modalBody');
             const header = document.getElementById('modalHeader');
@@ -805,19 +891,53 @@
 
             if (type === 'client') {
                 header.innerText = id ? '编辑客户' : '新增客户';
-                let clientData = { name: '', contact: '', notes: '' };
+                let clientData = { name: '', contact: '', notes: '', industryId: '', level: 'normal' };
                 if (id) clientData = data.clients.find(c => c.id === id);
+
+                const indOptions = data.industries.map(i => `<option value="${i.id}" ${clientData.industryId === i.id ? 'selected' : ''}>${i.name}</option>`).join('');
 
                 body.innerHTML = `
                     <input type="text" class="form-input" id="c_name" value="${clientData.name}" placeholder="客户名称 *">
                     <input type="text" class="form-input" id="c_contact" value="${clientData.contact || ''}" placeholder="联系人">
+                    
+                    <label style="font-size: 12px; color: var(--text-muted); display:block; margin-bottom:4px;">行业分类</label>
+                    <div style="display: flex; gap: 8px; align-items: center;">
+                        <select class="form-select" id="c_industry" style="margin-bottom:0; flex:1"><option value="">未选择</option>${indOptions}</select>
+                        <button class="btn btn-secondary btn-small" onclick="openModal('industry')">管理</button>
+                    </div>
+
+                    <label style="font-size: 12px; color: var(--text-muted); display:block; margin-top:12px; margin-bottom:4px;">重点程度</label>
+                    <select class="form-select" id="c_level" style="margin-bottom: 12px;">
+                        <option value="normal" ${clientData.level === 'normal' ? 'selected' : ''}>一般</option>
+                        <option value="important" ${clientData.level === 'important' ? 'selected' : ''}>重要</option>
+                    </select>
+
                     <textarea class="form-input" id="c_notes" placeholder="备注">${clientData.notes || ''}</textarea>
                     ${id ? `<button class="btn btn-danger" style="margin-top: 10px;" onclick="deleteClient(${id})">删除客户</button>` : ''}
                 `;
+            }
+            else if (type === 'industry') {
+                header.innerText = '行业管理';
+                const list = data.industries.map(i => `
+                    <div class="ind-row">
+                        <input type="text" value="${i.name}" onchange="updateIndustryName(${i.id}, this.value)">
+                        <button onclick="deleteIndustry(${i.id})" style="background:none; border:none; color:var(--danger);">✕</button>
+                    </div>
+                `).join('');
+                
+                body.innerHTML = `
+                    <div style="margin-bottom: 16px;">${list || '<div style="color:var(--text-muted); text-align:center;">暂无行业</div>'}</div>
+                    <div style="display:flex; gap:8px;">
+                        <input type="text" id="new_industry" class="form-input" placeholder="输入新行业名称" style="margin-bottom:0;">
+                        <button class="btn btn-primary btn-small" onclick="addIndustry()">添加</button>
+                    </div>
+                `;
+                saveBtn.innerText = "关闭";
+                saveBtn.onclick = () => closeModal();
             } 
             else if (type === 'visit') {
                 header.innerText = '新建拜访计划';
-                const clientOptions = data.clients.map(c => `<option value="${c.id}" ${c.id === preselectedClientId ? 'selected' : ''}>${c.name}</option>`).join('');
+                const clientOptions = data.clients.map(c => `<option value="${c.id}">${c.name}</option>`).join('');
                 body.innerHTML = `
                     <select class="form-select" id="m_client"><option value="">选择客户 *</option>${clientOptions}</select>
                     <input type="date" class="form-input" id="m_date" value="${dateOverride || getTodayStr()}">
@@ -862,6 +982,8 @@
                             <input type="date" class="form-input" id="v_reschedule_date" value="${visit.date}">
                         </div>
                     </div>
+                    
+                    ${visit.status === 'pending' ? `<button class="btn btn-danger" style="margin-top: 20px;" onclick="deleteVisit(${id})">删除此拜访计划</button>` : ''}
                 `;
                 
                 window.setStatus = (status) => {
@@ -906,45 +1028,44 @@
 
         const closeModal = () => document.getElementById('modalOverlay').classList.remove('active');
 
+        // --- Save Logic ---
         const saveModal = (type, id) => {
             if (type === 'client') {
                 const name = document.getElementById('c_name').value;
                 if (!name) return alert('请填写客户名称');
 
+                const clientData = {
+                    name,
+                    contact: document.getElementById('c_contact').value,
+                    industryId: parseInt(document.getElementById('c_industry').value) || null,
+                    level: document.getElementById('c_level').value,
+                    notes: document.getElementById('c_notes').value
+                };
+
                 if (id) {
                     const c = data.clients.find(x => x.id === id);
-                    Object.assign(c, { name, contact: document.getElementById('c_contact').value, notes: document.getElementById('c_notes').value });
-                    saveData(); 
-                    closeModal(); 
-                    renderClients(); 
-                    renderHome();
+                    Object.assign(c, clientData);
                 } else {
-                    // New Client Logic
-                    const newClientId = Date.now();
-                    data.clients.push({ 
-                        id: newClientId, 
-                        name, 
-                        contact: document.getElementById('c_contact').value, 
-                        notes: document.getElementById('c_notes').value, 
-                        avatar: name.charAt(0) 
-                    });
-                    saveData();
-                    renderClients(); // Update list in background
-
-                    // Optimized Workflow: Ask to add visit
-                    if (confirm('客户创建成功！是否立即为该客户添加拜访计划？')) {
-                        // Switch content to Visit Modal without closing animation
-                        openModal('visit', null, getTodayStr(), newClientId);
-                    } else {
-                        closeModal(); // Only close if user cancels the follow-up action
-                    }
+                    data.clients.push({ id: Date.now(), ...clientData, avatar: name.charAt(0) });
                 }
+                saveData(); closeModal(); renderClients(); renderHome();
             } 
             else if (type === 'visit') {
                 const clientId = parseInt(document.getElementById('m_client').value);
                 const date = document.getElementById('m_date').value;
                 if(!clientId || !date) return alert('请选择客户和日期');
                 
+                // Check duplicates
+                const existing = data.visits.find(v => v.clientId === clientId && v.date === date && v.status === 'pending');
+                if (existing) {
+                    const goEdit = confirm("该客户在当天已有拜访计划。\n点击【确定】编辑现有计划，点击【取消】返回修改日期。");
+                    if (goEdit) {
+                        closeModal();
+                        setTimeout(() => openModal('visit_edit', existing.id), 300);
+                    }
+                    return;
+                }
+
                 data.visits.push({ id: Date.now(), clientId, date, status: 'pending', notes: document.getElementById('m_notes').value, detail: '', nextDate: '', nextGoal: '' });
                 saveData(); closeModal(); renderHome(); renderCalendar();
             }
@@ -983,7 +1104,8 @@
                 saveData(); closeModal(); renderHome(); renderCalendar(); renderRecords();
             }
         };
-        
+
+        // --- Helper Actions ---
         window.deleteClient = (id) => {
             if(confirm('删除客户将同时删除相关拜访记录，确定吗？')) {
                 data.clients = data.clients.filter(c => c.id !== id);
@@ -995,7 +1117,42 @@
             }
         };
 
-        // --- Helpers ---
+        window.deleteVisit = (id) => {
+            if(confirm('确定要删除这条拜访计划吗？')) {
+                data.visits = data.visits.filter(v => v.id !== id);
+                saveData();
+                closeModal();
+                renderCalendar();
+                renderHome();
+            }
+        };
+
+        window.addIndustry = () => {
+            const input = document.getElementById('new_industry');
+            if(input.value.trim()) {
+                data.industries.push({ id: Date.now(), name: input.value.trim() });
+                saveData();
+                openModal('industry');
+                renderClients(); // Refresh client filters
+            }
+        };
+
+        window.updateIndustryName = (id, name) => {
+            const ind = data.industries.find(i => i.id === id);
+            if(ind) ind.name = name;
+            saveData();
+            renderClients();
+        };
+
+        window.deleteIndustry = (id) => {
+            if(data.industries.length <= 1) return alert("至少保留一个行业分类");
+            data.industries = data.industries.filter(i => i.id !== id);
+            saveData();
+            openModal('industry');
+            renderClients();
+        };
+
+        // --- Utils ---
         const getTodayStr = () => new Date().toISOString().split('T')[0];
         const formatObjToStr = (d) => `${d.getFullYear()}-${String(d.getMonth()+1).padStart(2, '0')}-${String(d.getDate()).padStart(2, '0')}`;
 
