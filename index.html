@@ -182,7 +182,6 @@
             border-color: var(--accent);
         }
 
-        /* 首页列表新样式 */
         .home-list-item {
             padding: 14px 16px;
             border-bottom: 1px solid var(--border);
@@ -556,6 +555,7 @@
                 <div style="margin-bottom: 12px; display: flex; justify-content: space-between; align-items: center;">
                     <div>
                         <h3 style="font-size: 16px; margin-bottom: 4px;" id="home-list-title">近期计划</h3>
+                        <!-- 显示完整日期和当天待拜访数目 -->
                         <div style="font-size: 13px; color: var(--text-muted);" id="home-date-info"></div>
                     </div>
                     <button id="btn-clear-filter" class="btn btn-secondary btn-small" style="display: none;" onclick="toggleHomeFilter(false)">返回全部</button>
@@ -679,7 +679,7 @@
     <script>
         if ('serviceWorker' in navigator) {
             const swCode = `
-                const CACHE_NAME = 'crm-v22'; 
+                const CACHE_NAME = 'crm-v24'; 
                 self.addEventListener('fetch', event => {
                     event.respondWith(fetch(event.request).catch(() => caches.match(event.request)));
                 });
@@ -804,11 +804,15 @@
                 warnEl.style.display = 'none';
             }
 
-            // 日期信息
+            // 日期信息 - 显示完整日期和当天待拜访数目
             const now = new Date();
-            const dateStr = now.toLocaleDateString('zh-CN', { month: 'long', day: 'numeric' }); 
-            const weekStr = now.toLocaleDateString('zh-CN', { weekday: 'long' }); 
-            document.getElementById('home-date-info').innerText = `今天是${dateStr} ${weekStr}，${allPending.length}个待拜访`;
+            const month = now.getMonth() + 1;
+            const date = now.getDate();
+            const weekdays = ['日', '一', '二', '三', '四', '五', '六'];
+            const weekday = weekdays[now.getDay()];
+            const todayCount = todayVisits.length;
+
+            document.getElementById('home-date-info').innerText = `今天是${month}月${date}日 星期${weekday}，有${todayCount}个待拜访`;
 
             // 渲染列表
             let displayList = [];
