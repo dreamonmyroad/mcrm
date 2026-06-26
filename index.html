@@ -413,6 +413,23 @@
             border-color: var(--accent);
         }
 
+        /* History Item */
+        .history-item {
+            padding: 12px;
+            border-bottom: 1px solid var(--border);
+        }
+        .history-item:last-child { border-bottom: none; }
+        
+        /* Action Row for buttons */
+        .action-row {
+            display: flex;
+            gap: 10px;
+            margin-top: 12px;
+        }
+        .action-row .btn {
+            flex: 1;
+        }
+
     </style>
 </head>
 <body>
@@ -469,14 +486,16 @@
             <!-- Clients View -->
             <div class="view" id="view-clients">
                 <div style="position: sticky; top: 0; background: var(--bg); z-index: 10; padding-bottom: 12px;">
-                    
-                    <div id="client-filter-bar" class="filter-bar">
-                        <!-- Rendered by JS -->
-                    </div>
-
+                    <div id="client-filter-bar" class="filter-bar"></div>
                     <div style="display: flex; gap: 10px;">
                         <input type="text" class="form-input" placeholder="搜索客户..." id="clientSearch" oninput="renderClients()" style="margin-bottom: 0; flex: 1;">
                         <button class="btn btn-primary" onclick="openModal('client')" style="width: auto; padding: 0 16px; white-space: nowrap;">新增</button>
+                    </div>
+                    <div class="action-row">
+                        <button class="btn btn-secondary btn-small" onclick="exportClients()">
+                            <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/><polyline points="7 10 12 15 17 10"/><line x1="12" y1="15" x2="12" y2="3"/></svg>
+                            导出客户清单
+                        </button>
                     </div>
                 </div>
                 <div id="clients-list" style="padding-bottom: 80px;"></div>
@@ -521,6 +540,15 @@
 
             <!-- Records View -->
             <div class="view" id="view-records">
+                <div style="position: sticky; top: 0; background: var(--bg); z-index: 10; padding-bottom: 12px;">
+                    <div id="record-filter-bar"></div>
+                    <div class="action-row" style="margin-top:0; margin-bottom: 0px;">
+                         <button class="btn btn-secondary btn-small" onclick="exportVisits()">
+                            <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/><polyline points="7 10 12 15 17 10"/><line x1="12" y1="15" x2="12" y2="3"/></svg>
+                            导出拜访履历
+                        </button>
+                    </div>
+                </div>
                 <div id="records-list" style="padding-bottom: 80px;"></div>
             </div>
         </main>
@@ -568,7 +596,7 @@
     <script>
         if ('serviceWorker' in navigator) {
             const swCode = `
-                const CACHE_NAME = 'crm-v9'; 
+                const CACHE_NAME = 'crm-v15'; 
                 self.addEventListener('fetch', event => {
                     event.respondWith(fetch(event.request).catch(() => caches.match(event.request)));
                 });
@@ -585,7 +613,8 @@
         let currentWeek = new Date();
         let currentDay = new Date();
         let calendarMode = 'month';
-        let activeClientFilter = 'all'; // 'all' or industry ID
+        let activeClientFilter = 'all';
+        let activeRecordFilter = 'all'; 
 
         // --- Data Management ---
         const loadData = () => {
@@ -610,6 +639,63 @@
 
         const saveData = () => localStorage.setItem('crm_app_data_v3', JSON.stringify(data));
 
+        // --- Export Functions ---
+        const exportClients = () => {
+            if(data.clients.length === 0) return alert('暂无客户数据可导出');
+            
+            const headers = ['客户名称', '联系人', '行业', '重点程度', '备注'];
+            const rows = data.clients.map(c => {
+                const ind = data.industries.find(i => i.id === c.industryId);
+                return [
+                    `"${c.name}"`, 
+                    `"${c.contact || ''}"`, 
+                    `"${ind?.name || '未分类'}"`, 
+                    `"${c.level === 'important' ? '重要' : '一般'}"`, 
+                    `"${(c.notes || '').replace(/"/g, '""')}"`
+                ];
+            });
+            
+            downloadCSV('客户清单.csv', headers, rows);
+        };
+
+        const exportVisits = () => {
+            if(data.visits.length === 0) return alert('暂无拜访数据可导出');
+            
+            const headers = ['日期', '客户名称', '状态', '计划说明', '执行详情', '下次跟进日', '跟进目标'];
+            const statusMap = { pending: '待拜访', done: '已拜访', missed: '未拜访', reschedule: '已改期' };
+            
+            const rows = data.visits.map(v => {
+                const client = data.clients.find(c => c.id === v.clientId);
+                return [
+                    `"${v.date}"`,
+                    `"${client?.name || '未知'}"`,
+                    `"${statusMap[v.status] || v.status}"`,
+                    `"${(v.notes || '').replace(/"/g, '""')}"`,
+                    `"${(v.detail || '').replace(/"/g, '""')}"`,
+                    `"${v.nextDate || ''}"`,
+                    `"${(v.nextGoal || '').replace(/"/g, '""')}"`
+                ];
+            });
+
+            downloadCSV('拜访履历.csv', headers, rows);
+        };
+
+        const downloadCSV = (filename, headers, rows) => {
+            const BOM = "\uFEFF"; // UTF-8 BOM for Excel
+            const csvContent = BOM + [headers.join(','), ...rows.map(r => r.join(','))].join('\n');
+            
+            const blob = new Blob([csvContent], { type: 'text/csv;charset=utf-8;' });
+            const link = document.createElement('a');
+            const url = URL.createObjectURL(blob);
+            
+            link.setAttribute('href', url);
+            link.setAttribute('download', filename);
+            link.style.visibility = 'hidden';
+            document.body.appendChild(link);
+            link.click();
+            document.body.removeChild(link);
+        };
+
         // --- Render Home ---
         const renderHome = () => {
             const today = getTodayStr();
@@ -623,7 +709,7 @@
             if (pending.length === 0) {
                 container.innerHTML = '<div class="empty-state">暂无待办事项</div>';
             } else {
-                container.innerHTML = pending.slice(0, 5).map(v => {
+                container.innerHTML = pending.sort((a,b) => new Date(a.date) - new Date(b.date)).slice(0, 5).map(v => {
                     const client = data.clients.find(c => c.id === v.clientId);
                     const levelTag = client?.level === 'important' ? '<span class="tag tag-important" style="margin-left:6px">重要</span>' : '';
                     return `
@@ -642,6 +728,8 @@
 
         // --- Render Clients ---
         const renderClients = () => {
+            const today = getTodayStr();
+            
             // 1. Render Filter Bar
             const filterContainer = document.getElementById('client-filter-bar');
             const counts = { all: data.clients.length };
@@ -666,18 +754,34 @@
             const listHtml = filtered.map(c => {
                 const ind = data.industries.find(i => i.id === c.industryId);
                 const levelTag = c.level === 'important' ? '<span class="tag tag-important">重要</span>' : '<span class="tag tag-normal">一般</span>';
+                
+                // Find next visit date
+                const nextVisit = data.visits.find(v => v.clientId === c.id && v.status === 'pending' && v.date >= today);
+                const nextVisitHtml = nextVisit 
+                    ? `<span style="color:var(--accent); margin-left:8px; font-size:12px; font-weight:500;">计划: ${nextVisit.date}</span>` 
+                    : '';
+
                 return `
-                    <div class="card" style="margin-bottom: 12px;" onclick="openModal('client', ${c.id})">
-                        <div style="display: flex; align-items: center; padding: 16px;">
+                    <div class="card" style="margin-bottom: 12px;">
+                        <div style="display: flex; align-items: center; padding: 16px;" onclick="openModal('client', ${c.id})">
                             <div class="avatar" style="background: var(--card-hover); color: var(--text); margin-right: 12px;">${c.avatar}</div>
                             <div style="flex: 1">
-                                <div style="font-weight: 600; margin-bottom: 4px;">${c.name} ${levelTag}</div>
-                                <div style="display: flex; gap: 8px; font-size: 12px; color: var(--text-muted);">
+                                <div style="display: flex; align-items: center;">
+                                    <div style="font-weight: 600;">${c.name} ${levelTag}</div>
+                                    ${nextVisitHtml}
+                                </div>
+                                <div style="display: flex; gap: 8px; font-size: 12px; color: var(--text-muted); margin-top:4px;">
                                     <span>${ind?.name || '未分类'}</span>
                                     <span>|</span>
                                     <span>${c.contact || '暂无联系'}</span>
                                 </div>
                             </div>
+                        </div>
+                        <div style="border-top: 1px solid var(--border); padding: 8px 16px; display: flex; justify-content: flex-end;">
+                            <button class="btn btn-small btn-secondary" style="padding: 4px 12px; font-size: 12px;" onclick="event.stopPropagation(); openModal('history', ${c.id})">
+                                <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" style="margin-right:4px;"><circle cx="12" cy="12" r="10"/><polyline points="12 6 12 12 16 14"/></svg>
+                                履历
+                            </button>
                         </div>
                     </div>
                 `;
@@ -843,7 +947,28 @@
 
         // --- Records ---
         const renderRecords = () => {
-            const sorted = data.visits.filter(v => v.status === 'done').sort((a,b) => new Date(b.date) - new Date(a.date));
+            // 1. 渲染筛选下拉框
+            const filterWrapper = document.getElementById('record-filter-bar');
+            const clientOptions = data.clients.map(c => 
+                `<option value="${c.id}" ${activeRecordFilter == c.id ? 'selected' : ''}>${c.name}</option>`
+            ).join('');
+
+            filterWrapper.innerHTML = `
+                <select class="form-select" onchange="filterRecords(this.value)" style="margin-bottom: 8px;">
+                    <option value="all" ${activeRecordFilter === 'all' ? 'selected' : ''}>筛选：全部客户</option>
+                    ${clientOptions}
+                </select>
+            `;
+
+            // 2. 筛选数据
+            let filtered = data.visits.filter(v => v.status === 'done');
+            if (activeRecordFilter !== 'all') {
+                const targetId = parseInt(activeRecordFilter);
+                filtered = filtered.filter(v => v.clientId === targetId);
+            }
+
+            // 3. 排序并渲染
+            const sorted = filtered.sort((a,b) => new Date(b.date) - new Date(a.date));
             
             const html = sorted.map(v => {
                 const client = data.clients.find(c => c.id === v.clientId);
@@ -861,6 +986,11 @@
                 `;
             }).join('');
             document.getElementById('records-list').innerHTML = html || '<div class="empty-state">暂无拜访记录</div>';
+        };
+
+        const filterRecords = (clientId) => {
+            activeRecordFilter = clientId;
+            renderRecords();
         };
 
         // --- Navigation ---
@@ -881,7 +1011,7 @@
         };
 
         // --- Modals ---
-        window.openModal = (type, id = null, dateOverride = null) => {
+        window.openModal = (type, id = null, dateOverride = null, preselectedClient = null) => {
             const overlay = document.getElementById('modalOverlay');
             const body = document.getElementById('modalBody');
             const header = document.getElementById('modalHeader');
@@ -916,6 +1046,36 @@
                     ${id ? `<button class="btn btn-danger" style="margin-top: 10px;" onclick="deleteClient(${id})">删除客户</button>` : ''}
                 `;
             }
+            else if (type === 'history') {
+                const client = data.clients.find(c => c.id === id);
+                const visits = data.visits.filter(v => v.clientId === id).sort((a,b) => new Date(b.date) - new Date(a.date));
+                header.innerText = `拜访履历 - ${client?.name || '未知'}`;
+                
+                body.innerHTML = visits.length === 0 ? '<div class="empty-state">暂无拜访记录</div>' : 
+                    visits.map(v => {
+                        let statusClass = 'tag-pending', statusText = '待拜访';
+                        if(v.status === 'done') { statusClass = 'tag-done'; statusText = '已拜访'; }
+                        if(v.status === 'missed') { statusClass = 'tag-missed'; statusText = '未拜访'; }
+                        
+                        return `
+                            <div class="history-item" onclick="closeModal(); setTimeout(() => openModal('visit_edit', ${v.id}), 300)">
+                                <div style="display:flex; justify-content:space-between; margin-bottom:4px;">
+                                    <span style="font-weight:600">${v.date}</span>
+                                    <span class="tag ${statusClass}">${statusText}</span>
+                                </div>
+                                <div style="font-size:13px; color:var(--text-muted)">${v.notes || '无计划备注'}</div>
+                                ${v.detail ? `<div style="font-size:13px; color:var(--text); margin-top:4px; padding-top:4px; border-top:1px dashed var(--border);">结果: ${v.detail}</div>` : ''}
+                            </div>
+                        `;
+                    }).join('');
+                
+                saveBtn.style.display = 'none';
+                document.querySelector('.modal-footer .btn-secondary').innerText = '关闭';
+                
+                // FIX: 必须在此处显示弹窗，因为下面有return
+                overlay.classList.add('active'); 
+                return; 
+            }
             else if (type === 'industry') {
                 header.innerText = '行业管理';
                 const list = data.industries.map(i => `
@@ -937,7 +1097,7 @@
             } 
             else if (type === 'visit') {
                 header.innerText = '新建拜访计划';
-                const clientOptions = data.clients.map(c => `<option value="${c.id}">${c.name}</option>`).join('');
+                const clientOptions = data.clients.map(c => `<option value="${c.id}" ${c.id === preselectedClient ? 'selected' : ''}>${c.name}</option>`).join('');
                 body.innerHTML = `
                     <select class="form-select" id="m_client"><option value="">选择客户 *</option>${clientOptions}</select>
                     <input type="date" class="form-input" id="m_date" value="${dateOverride || getTodayStr()}">
@@ -1023,6 +1183,10 @@
                 window.setStatus(visit.status);
             }
 
+            // Reset footer visibility if needed (fix for history modal)
+            saveBtn.style.display = 'block';
+            document.querySelector('.modal-footer .btn-secondary').innerText = '取消';
+            
             overlay.classList.add('active');
         };
 
@@ -1042,19 +1206,91 @@
                     notes: document.getElementById('c_notes').value
                 };
 
+                let savedClientId;
                 if (id) {
                     const c = data.clients.find(x => x.id === id);
                     Object.assign(c, clientData);
+                    savedClientId = id;
                 } else {
-                    data.clients.push({ id: Date.now(), ...clientData, avatar: name.charAt(0) });
+                    savedClientId = Date.now();
+                    data.clients.push({ id: savedClientId, ...clientData, avatar: name.charAt(0) });
                 }
-                saveData(); closeModal(); renderClients(); renderHome();
+                saveData();
+                closeModal();
+                
+                // Prompt for visit plan
+                setTimeout(() => {
+                    if(confirm("客户信息已保存。是否立即添加拜访计划？")) {
+                        openModal('visit', null, null, savedClientId);
+                    }
+                }, 300);
+                
+                renderClients(); 
+                renderHome();
             } 
             else if (type === 'visit') {
                 const clientId = parseInt(document.getElementById('m_client').value);
                 const date = document.getElementById('m_date').value;
+                const notes = document.getElementById('m_notes').value;
+                
                 if(!clientId || !date) return alert('请选择客户和日期');
                 
+                const today = getTodayStr();
+
+                // --- 新增逻辑：判断是否为过去时间 ---
+                if (date < today) {
+                    if (!confirm("检测到日期已过，是否补录为【已拜访】记录？\n(补录需填写拜访详情)")) {
+                        return; // 用户选择取消
+                    }
+                    
+                    // 切换界面为补录模式
+                    const header = document.getElementById('modalHeader');
+                    const body = document.getElementById('modalBody');
+                    const saveBtn = document.getElementById('modalSaveBtn');
+                    
+                    header.innerText = "补录拜访详情";
+                    const clientName = data.clients.find(c => c.id === clientId)?.name || '未知';
+                    
+                    body.innerHTML = `
+                        <div style="margin-bottom: 16px; padding: 12px; background: var(--bg); border-radius: 12px;">
+                            <div style="font-weight: 600; margin-bottom: 4px;">客户：${clientName}</div>
+                            <div style="font-size: 12px; color: var(--text-muted);">拜访日期：${date}</div>
+                            <div style="font-size: 12px; color: var(--text-muted);">计划目的：${notes || '无'}</div>
+                        </div>
+                        <label style="font-size: 12px; color: var(--text-muted);">拜访详情 <span class="required-star">*</span></label>
+                        <textarea class="form-input" id="b_detail" style="margin-top:8px; height: 120px; margin-bottom:0;" placeholder="请输入本次拜访的详细情况..."></textarea>
+                    `;
+
+                    // 动态更改保存按钮逻辑
+                    saveBtn.innerText = "保存补录";
+                    saveBtn.onclick = () => {
+                        const detail = document.getElementById('b_detail').value;
+                        if(!detail.trim()) return alert('请输入拜访详情');
+                        
+                        // 检查重复 (同一天同一客户只能有一条pending，但这里我们直接添加done记录，逻辑上允许补录)
+                        // 如果严谨起见，可以检查是否已有done记录，这里暂不限制补录次数
+                        
+                        data.visits.push({ 
+                            id: Date.now(), 
+                            clientId, 
+                            date, 
+                            status: 'done', 
+                            notes: notes, 
+                            detail: detail, 
+                            nextDate: '', 
+                            nextGoal: '' 
+                        });
+                        saveData();
+                        closeModal();
+                        renderHome();
+                        renderCalendar();
+                        renderRecords();
+                    };
+                    
+                    return; // 阻止后续默认保存逻辑
+                }
+
+                // --- 正常未来日期逻辑 ---
                 // Check duplicates
                 const existing = data.visits.find(v => v.clientId === clientId && v.date === date && v.status === 'pending');
                 if (existing) {
@@ -1066,7 +1302,7 @@
                     return;
                 }
 
-                data.visits.push({ id: Date.now(), clientId, date, status: 'pending', notes: document.getElementById('m_notes').value, detail: '', nextDate: '', nextGoal: '' });
+                data.visits.push({ id: Date.now(), clientId, date, status: 'pending', notes: notes, detail: '', nextDate: '', nextGoal: '' });
                 saveData(); closeModal(); renderHome(); renderCalendar();
             }
             else if (type === 'visit_edit') {
@@ -1133,7 +1369,7 @@
                 data.industries.push({ id: Date.now(), name: input.value.trim() });
                 saveData();
                 openModal('industry');
-                renderClients(); // Refresh client filters
+                renderClients();
             }
         };
 
