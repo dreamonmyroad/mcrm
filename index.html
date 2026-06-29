@@ -679,7 +679,7 @@
     <script>
         if ('serviceWorker' in navigator) {
             const swCode = `
-                const CACHE_NAME = 'crm-v24'; 
+                const CACHE_NAME = 'crm-v25'; 
                 self.addEventListener('fetch', event => {
                     event.respondWith(fetch(event.request).catch(() => caches.match(event.request)));
                 });
@@ -786,9 +786,11 @@
             const today = getTodayStr();
             
             const allPending = data.visits.filter(v => v.status === 'pending');
-            const overdue = allPending.filter(v => v.date < today);
-            const todayVisits = allPending.filter(v => v.date === today);
-            const upcoming = allPending.filter(v => v.date > today);
+            
+            // 排序：今天 > 过期（从早到晚）> 未来（从早到晚）
+            const todayVisits = allPending.filter(v => v.date === today).sort((a, b) => a.date.localeCompare(b.date));
+            const overdue = allPending.filter(v => v.date < today).sort((a, b) => a.date.localeCompare(b.date)); // 过期按日期从早到晚
+            const upcoming = allPending.filter(v => v.date > today).sort((a, b) => a.date.localeCompare(b.date)); // 未来按日期从早到晚
 
             // 统计数据
             document.getElementById('statClients').innerText = data.clients.length;
@@ -823,7 +825,8 @@
                 document.getElementById('home-list-title').style.color = "var(--danger)";
                 document.getElementById('btn-clear-filter').style.display = "block";
             } else {
-                displayList = [...overdue, ...todayVisits, ...upcoming];
+                // 组合顺序：今天 -> 过期 -> 未来
+                displayList = [...todayVisits, ...overdue, ...upcoming];
                 document.getElementById('home-list-title').innerText = "近期计划";
                 document.getElementById('home-list-title').style.color = "var(--text)";
                 document.getElementById('btn-clear-filter').style.display = "none";
