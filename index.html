@@ -6,7 +6,7 @@
     <meta name="theme-color" content="#0c1015">
     <meta name="apple-mobile-web-app-capable" content="yes">
     <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
-    <title>客户拜访管理 Pro</title>
+    <title>客户联系管理 Pro</title>
     
     <link rel="manifest" href="data:application/json;base64,ewogICJuYW1lIjogIua1i+ivleiuoeahgeW4ruWkp+Wwj+eoiyIsCiAgInNob3J0X25hbWUiOiAi6K6h5oCB5biy6KeBIiwKICAic3RhcnRfdXJsIjogIi4iLAogICJkaXNwbGF5IjogInN0YW5kYWxvbmUiLAogICJiYWNrZ3JvdW5kX2NvbG9yIjogIiMwYzEwMTUiLAogICJ0aGVtZV9jb2xvciI6ICIjMGMxMDE1Igp9">
 
@@ -493,6 +493,37 @@
             display: block;
         }
 
+        .contact-type-options {
+            display: flex;
+            gap: 8px;
+            margin-top: 8px;
+        }
+        
+        .contact-type-option {
+            flex: 1;
+            padding: 10px;
+            text-align: center;
+            border-radius: 8px;
+            font-size: 13px;
+            cursor: pointer;
+            border: 1px solid var(--border);
+            background: var(--card);
+            color: var(--text-muted);
+            transition: all 0.2s;
+        }
+        
+        .contact-type-option.active {
+            background: var(--accent-soft);
+            color: var(--accent);
+            border-color: var(--accent);
+        }
+        
+        .contact-type-option svg {
+            width: 20px;
+            height: 20px;
+            margin-bottom: 4px;
+        }
+
     </style>
 </head>
 <body>
@@ -506,7 +537,7 @@
                     <div style="width: 32px; height: 32px; background: linear-gradient(135deg, var(--accent), #00b894); border-radius: 8px; display: flex; align-items: center; justify-content: center;">
                         <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="#0c1015" stroke-width="2.5"><path d="M17 21v-2a4 4 0 0 0-4-4H5a4 4 0 0 0-4 4v2"/><circle cx="9" cy="7" r="4"/></svg>
                     </div>
-                    <span class="header-title" id="pageTitle">拜访日历</span>
+                    <span class="header-title" id="pageTitle">联系日历</span>
                 </div>
                 <div style="font-size: 13px; color: var(--text-muted);" id="todayDate"></div>
             </div>
@@ -529,7 +560,7 @@
                         </div>
                     </div>
                     
-                    <!-- 待拜访统计 -->
+                    <!-- 待联系统计 -->
                     <div class="card" style="background: var(--card); border:none; border-radius:16px; margin:0;">
                          <div style="padding: 16px; display: flex; align-items: center; gap: 16px;">
                             <div style="width: 48px; height: 48px; border-radius: 12px; display: flex; align-items: center; justify-content: center; background: rgba(255, 167, 38, 0.15); color: var(--warning); font-weight: 600; font-size: 20px;">
@@ -537,7 +568,7 @@
                             </div>
                             <div style="flex: 1;">
                                 <div style="font-size: 24px; font-weight: 700;" id="statPending">0</div>
-                                <div style="font-size: 12px; color: var(--text-muted);">待拜访</div>
+                                <div style="font-size: 12px; color: var(--text-muted);">待联系</div>
                                 <div id="overdue-warning" style="display: none; margin-top: 6px; padding-top: 6px; border-top: 1px solid var(--border);">
                                     <div style="display: flex; align-items: center; justify-content: space-between;">
                                         <span style="font-size: 12px; font-weight: 600; color: var(--danger);">
@@ -555,7 +586,7 @@
                 <div style="margin-bottom: 12px; display: flex; justify-content: space-between; align-items: center;">
                     <div>
                         <h3 style="font-size: 16px; margin-bottom: 4px;" id="home-list-title">近期计划</h3>
-                        <!-- 显示完整日期和当天待拜访数目 -->
+                        <!-- 显示完整日期和当天待联系数目 -->
                         <div style="font-size: 13px; color: var(--text-muted);" id="home-date-info"></div>
                     </div>
                     <button id="btn-clear-filter" class="btn btn-secondary btn-small" style="display: none;" onclick="toggleHomeFilter(false)">返回全部</button>
@@ -617,7 +648,7 @@
                         <button class="btn btn-secondary btn-small" onclick="changeDay(1)">></button>
                     </div>
                     <div id="dayList"></div>
-                    <button class="btn btn-primary" style="margin-top: 20px;" onclick="openModal('visit', null, getSelectedDayStr())">添加今日拜访</button>
+                    <button class="btn btn-primary" style="margin-top: 20px;" onclick="openModal('visit', null, getSelectedDayStr())">添加今日联系</button>
                 </div>
             </div>
 
@@ -628,7 +659,7 @@
                     <div class="action-row" style="margin-top:0; margin-bottom: 0px;">
                          <button class="btn btn-secondary btn-small" onclick="exportVisits()">
                             <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/><polyline points="7 10 12 15 17 10"/><line x1="12" y1="15" x2="12" y2="3"/></svg>
-                            导出拜访履历
+                            导出联系履历
                         </button>
                     </div>
                 </div>
@@ -679,7 +710,7 @@
     <script>
         if ('serviceWorker' in navigator) {
             const swCode = `
-                const CACHE_NAME = 'crm-v25'; 
+                const CACHE_NAME = 'crm-v26'; 
                 self.addEventListener('fetch', event => {
                     event.respondWith(fetch(event.request).catch(() => caches.match(event.request)));
                 });
@@ -702,9 +733,14 @@
 
         // --- Data Management ---
         const loadData = () => {
-            const stored = localStorage.getItem('crm_app_data_v3');
-            if (stored) data = JSON.parse(stored);
-            else {
+            const stored = localStorage.getItem('crm_app_data_v4');
+            if (stored) {
+                data = JSON.parse(stored);
+                // 迁移旧数据，添加contactType字段
+                data.visits.forEach(v => {
+                    if (!v.contactType) v.contactType = '';
+                });
+            } else {
                 data.industries = [
                     { id: 1, name: '制造业' },
                     { id: 2, name: 'IT互联网' },
@@ -715,13 +751,13 @@
                     { id: 1, name: '示例客户', contact: '张总', industryId: 2, level: 'important', notes: '重点客户', avatar: '示' },
                 ];
                 data.visits = [
-                    { id: 1, clientId: 1, date: getTodayStr(), status: 'pending', notes: '初次拜访', detail: '', nextDate: '', nextGoal: '', stopReason: '' }
+                    { id: 1, clientId: 1, date: getTodayStr(), status: 'pending', notes: '初次联系', detail: '', nextDate: '', nextGoal: '', stopReason: '', contactType: '' }
                 ];
                 saveData();
             }
         };
 
-        const saveData = () => localStorage.setItem('crm_app_data_v3', JSON.stringify(data));
+        const saveData = () => localStorage.setItem('crm_app_data_v4', JSON.stringify(data));
 
         // --- Export Functions ---
         const exportClients = () => {
@@ -743,10 +779,11 @@
         };
 
         const exportVisits = () => {
-            if(data.visits.length === 0) return alert('暂无拜访数据可导出');
+            if(data.visits.length === 0) return alert('暂无联系数据可导出');
             
-            const headers = ['日期', '客户名称', '状态', '计划说明', '执行详情', '下次跟进日', '跟进目标', '不再跟进原因'];
-            const statusMap = { pending: '待拜访', done: '已拜访', missed: '未拜访', reschedule: '已改期' };
+            const headers = ['日期', '客户名称', '状态', '联系方式', '计划说明', '执行详情', '下次联系日', '联系目标', '不再联系原因'];
+            const statusMap = { pending: '待联系', done: '已联系', missed: '未联系', reschedule: '已改期' };
+            const contactTypeMap = { phone: '电话', wechat: '微信', visit: '上门', '': '-' };
             
             const rows = data.visits.map(v => {
                 const client = data.clients.find(c => c.id === v.clientId);
@@ -754,6 +791,7 @@
                     `"${v.date}"`,
                     `"${client?.name || '未知'}"`,
                     `"${statusMap[v.status] || v.status}"`,
+                    `"${contactTypeMap[v.contactType] || '-'}"`,
                     `"${(v.notes || '').replace(/"/g, '""')}"`,
                     `"${(v.detail || '').replace(/"/g, '""')}"`,
                     `"${v.nextDate || ''}"`,
@@ -762,7 +800,7 @@
                 ];
             });
 
-            downloadCSV('拜访履历.csv', headers, rows);
+            downloadCSV('联系履历.csv', headers, rows);
         };
 
         const downloadCSV = (filename, headers, rows) => {
@@ -789,8 +827,8 @@
             
             // 排序：今天 > 过期（从早到晚）> 未来（从早到晚）
             const todayVisits = allPending.filter(v => v.date === today).sort((a, b) => a.date.localeCompare(b.date));
-            const overdue = allPending.filter(v => v.date < today).sort((a, b) => a.date.localeCompare(b.date)); // 过期按日期从早到晚
-            const upcoming = allPending.filter(v => v.date > today).sort((a, b) => a.date.localeCompare(b.date)); // 未来按日期从早到晚
+            const overdue = allPending.filter(v => v.date < today).sort((a, b) => a.date.localeCompare(b.date));
+            const upcoming = allPending.filter(v => v.date > today).sort((a, b) => a.date.localeCompare(b.date));
 
             // 统计数据
             document.getElementById('statClients').innerText = data.clients.length;
@@ -806,7 +844,7 @@
                 warnEl.style.display = 'none';
             }
 
-            // 日期信息 - 显示完整日期和当天待拜访数目
+            // 日期信息
             const now = new Date();
             const month = now.getMonth() + 1;
             const date = now.getDate();
@@ -814,7 +852,7 @@
             const weekday = weekdays[now.getDay()];
             const todayCount = todayVisits.length;
 
-            document.getElementById('home-date-info').innerText = `今天是${month}月${date}日 星期${weekday}，有${todayCount}个待拜访`;
+            document.getElementById('home-date-info').innerText = `今天是${month}月${date}日 星期${weekday}，有${todayCount}个待联系`;
 
             // 渲染列表
             let displayList = [];
@@ -825,7 +863,6 @@
                 document.getElementById('home-list-title').style.color = "var(--danger)";
                 document.getElementById('btn-clear-filter').style.display = "block";
             } else {
-                // 组合顺序：今天 -> 过期 -> 未来
                 displayList = [...todayVisits, ...overdue, ...upcoming];
                 document.getElementById('home-list-title').innerText = "近期计划";
                 document.getElementById('home-list-title').style.color = "var(--text)";
@@ -835,7 +872,7 @@
             const container = document.getElementById('home-visits');
             if (displayList.length === 0) {
                 container.innerHTML = homeFilterOverdue 
-                    ? '<div class="empty-state">没有过期的拜访记录</div>' 
+                    ? '<div class="empty-state">没有过期的联系记录</div>' 
                     : '<div class="empty-state">暂无待办事项</div>';
             } else {
                 container.innerHTML = displayList.map(v => {
@@ -844,7 +881,6 @@
                     const isToday = v.date === today;
                     const isOverdue = v.date < today;
                     
-                    // 日期显示和样式
                     let dateText = '';
                     let dateClass = 'date-normal';
                     
@@ -860,15 +896,13 @@
                     
                     return `
                         <div class="home-list-item" onclick="openFeedbackModal(${v.id})">
-                            <!-- 第一行：客户名称 + 状态 + 履历按钮 -->
                             <div class="home-list-row">
                                 <div style="display: flex; align-items: center; gap: 8px;">
                                     <span class="home-client-name">${client?.name || '未知'}</span>
-                                    <span class="tag tag-pending">待拜访</span>
+                                    <span class="tag tag-pending">待联系</span>
                                 </div>
                                 <button class="btn btn-secondary btn-small" style="padding: 4px 10px; font-size: 11px;" onclick="event.stopPropagation(); openModal('history', ${v.clientId})">履历</button>
                             </div>
-                            <!-- 第二行：日期（带颜色） + 拜访目的 -->
                             <div class="home-list-row">
                                 <div style="display: flex; align-items: center;">
                                     <span class="home-date ${dateClass}">${dateText}</span>
@@ -893,7 +927,6 @@
             
             header.innerText = `反馈 - ${client?.name || '未知'}`;
             
-            // 判断当前状态
             const hasStopReason = visit.stopReason && visit.stopReason.trim();
             const defaultContinue = !hasStopReason;
             
@@ -903,17 +936,37 @@
                     <div style="font-size: 13px; color: var(--text);">${visit.notes || '无备注'}</div>
                 </div>
 
-                <label style="font-size: 12px; color: var(--text-muted);">拜访状态</label>
+                <label style="font-size: 12px; color: var(--text-muted);">联系状态</label>
                 <div class="status-options" style="margin-bottom: 16px;">
-                    <div class="status-option active done" onclick="setFeedbackStatus('done')">已拜访</div>
+                    <div class="status-option active done" onclick="setFeedbackStatus('done')">已联系</div>
                     <div class="status-option" onclick="setFeedbackStatus('reschedule')">改期</div>
-                    <div class="status-option" onclick="setFeedbackStatus('missed')">未拜访</div>
+                    <div class="status-option" onclick="setFeedbackStatus('missed')">未联系</div>
                 </div>
                 <input type="hidden" id="fb_status" value="done">
 
+                <!-- 联系方式选择（仅已联系时显示） -->
+                <div id="fb_contact_type_container" style="margin-bottom: 16px;">
+                    <label style="font-size: 12px; color: var(--text-muted);">联系方式 <span class="required-star">*</span></label>
+                    <div class="contact-type-options" style="margin-top: 8px;">
+                        <div class="contact-type-option active" id="fb_ct_phone" onclick="setContactType('phone')">
+                            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M22 16.92v3a2 2 0 0 1-2.18 2 19.79 19.79 0 0 1-8.63-3.07 19.5 19.5 0 0 1-6-6 19.79 19.79 0 0 1-3.07-8.67A2 2 0 0 1 4.11 2h3a2 2 0 0 1 2 1.72 12.84 12.84 0 0 0 .7 2.81 2 2 0 0 1-.45 2.11L8.09 9.91a16 16 0 0 0 6 6l1.27-1.27a2 2 0 0 1 2.11-.45 12.84 12.84 0 0 0 2.81.7A2 2 0 0 1 22 16.92z"/></svg>
+                            <div>电话</div>
+                        </div>
+                        <div class="contact-type-option" id="fb_ct_wechat" onclick="setContactType('wechat')">
+                            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M21 11.5a8.38 8.38 0 0 1-.9 3.8 8.5 8.5 0 0 1-7.6 4.7 8.38 8.38 0 0 1-3.8-.9L3 21l1.9-5.7a8.38 8.38 0 0 1-.9-3.8 8.5 8.5 0 0 1 4.7-7.6 8.38 8.38 0 0 1 3.8-.9h.5a8.48 8.48 0 0 1 8 8v.5z"/></svg>
+                            <div>微信</div>
+                        </div>
+                        <div class="contact-type-option" id="fb_ct_visit" onclick="setContactType('visit')">
+                            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M3 9l9-7 9 7v11a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2z"/><polyline points="9 22 9 12 15 12 15 22"/></svg>
+                            <div>上门</div>
+                        </div>
+                    </div>
+                    <input type="hidden" id="fb_contact_type" value="phone">
+                </div>
+
                 <div id="fb_detail_container">
-                    <label style="font-size: 12px; color: var(--text-muted);" id="fb_detail_label">拜访详情</label>
-                    <textarea class="form-input" id="fb_detail" style="margin-top:8px; margin-bottom: 16px;" placeholder="记录本次拜访成果...">${visit.detail || ''}</textarea>
+                    <label style="font-size: 12px; color: var(--text-muted);" id="fb_detail_label">联系详情</label>
+                    <textarea class="form-input" id="fb_detail" style="margin-top:8px; margin-bottom: 16px;" placeholder="记录本次联系成果...">${visit.detail || ''}</textarea>
                 </div>
 
                 <label style="font-size: 12px; color: var(--text-muted); display:block; margin-bottom:8px;">后续安排</label>
@@ -955,23 +1008,33 @@
                     if(status === 'missed') activeBtn.classList.add('missed');
                 }
 
+                const contactTypeContainer = document.getElementById('fb_contact_type_container');
                 const detailLabel = document.getElementById('fb_detail_label');
                 const detailInput = document.getElementById('fb_detail');
                 const rescheduleField = document.getElementById('fb_reschedule_field');
                 
-                if (status === 'missed') {
-                    detailLabel.innerHTML = '未拜访原因 <span class="required-star">*</span>';
-                    detailInput.placeholder = '请填写未拜访原因（必填）';
+                if (status === 'done') {
+                    contactTypeContainer.style.display = 'block';
+                    detailLabel.innerText = '联系详情';
+                    detailInput.placeholder = '记录本次联系成果...';
+                    rescheduleField.style.display = 'none';
+                } else if (status === 'missed') {
+                    contactTypeContainer.style.display = 'none';
+                    detailLabel.innerHTML = '未联系原因 <span class="required-star">*</span>';
+                    detailInput.placeholder = '请填写未联系原因（必填）';
                     rescheduleField.style.display = 'none';
                 } else if (status === 'reschedule') {
+                    contactTypeContainer.style.display = 'none';
                     detailLabel.innerText = '改期原因';
                     detailInput.placeholder = '请填写改期原因...';
                     rescheduleField.style.display = 'block';
-                } else {
-                    detailLabel.innerText = '拜访详情';
-                    detailInput.placeholder = '记录本次拜访成果...';
-                    rescheduleField.style.display = 'none';
                 }
+            };
+            
+            window.setContactType = (type) => {
+                document.getElementById('fb_contact_type').value = type;
+                document.querySelectorAll('.contact-type-option').forEach(el => el.classList.remove('active'));
+                document.getElementById(`fb_ct_${type}`).classList.add('active');
             };
             
             window.toggleFeedbackFollowUp = (type) => {
@@ -999,11 +1062,18 @@
                 const detail = document.getElementById('fb_detail').value;
                 
                 if (status === 'missed' && !detail.trim()) {
-                    return alert('请填写未拜访原因');
+                    return alert('请填写未联系原因');
                 }
                 
                 visit.status = status;
                 visit.detail = detail;
+                
+                // 保存联系方式（仅已联系时）
+                if (status === 'done') {
+                    visit.contactType = document.getElementById('fb_contact_type').value;
+                } else {
+                    visit.contactType = '';
+                }
                 
                 if (status === 'done') {
                     const isContinue = document.getElementById('fb_btn_continue').classList.contains('active');
@@ -1023,7 +1093,8 @@
                                 detail: '', 
                                 nextDate: '', 
                                 nextGoal: '',
-                                stopReason: ''
+                                stopReason: '',
+                                contactType: ''
                             });
                         }
                     } else {
@@ -1037,6 +1108,7 @@
                     const newDate = document.getElementById('fb_reschedule_date').value;
                     if(newDate) visit.date = newDate;
                     visit.status = 'pending';
+                    visit.contactType = '';
                 }
                 
                 saveData();
@@ -1230,10 +1302,17 @@
         const renderVisitItem = (v) => {
             const client = data.clients.find(c => c.id === v.clientId);
             let statusClass = 'tag-pending';
-            let statusText = '待拜访';
-            if(v.status === 'done') { statusClass = 'tag-done'; statusText = '已拜访'; }
-            if(v.status === 'missed') { statusClass = 'tag-missed'; statusText = '未拜访'; }
+            let statusText = '待联系';
+            if(v.status === 'done') { statusClass = 'tag-done'; statusText = '已联系'; }
+            if(v.status === 'missed') { statusClass = 'tag-missed'; statusText = '未联系'; }
             if(v.status === 'reschedule') { statusClass = 'tag-reschedule'; statusText = '已改期'; }
+
+            const contactTypeIcon = {
+                phone: '📞',
+                wechat: '💬',
+                visit: '🏠',
+                '': ''
+            };
 
             return `
                 <div style="display: flex; align-items: center; padding: 12px 16px; border-bottom: 1px solid var(--border); cursor: pointer;" onclick="openModal('visit_edit', ${v.id})">
@@ -1241,7 +1320,10 @@
                         <div style="font-weight: 500">${client?.name || '未知'}</div>
                         <div style="font-size: 12px; color: var(--text-muted)">${v.notes || '无备注'}</div>
                     </div>
-                    <span class="tag ${statusClass}">${statusText}</span>
+                    <div style="display: flex; align-items: center; gap: 6px;">
+                        ${v.contactType ? `<span style="font-size: 14px;">${contactTypeIcon[v.contactType]}</span>` : ''}
+                        <span class="tag ${statusClass}">${statusText}</span>
+                    </div>
                 </div>
             `;
         };
@@ -1296,6 +1378,9 @@
 
             const sorted = filtered.sort((a,b) => new Date(b.date) - new Date(a.date));
             
+            const contactTypeMap = { phone: '电话', wechat: '微信', visit: '上门', '': '-' };
+            const contactTypeIcon = { phone: '📞', wechat: '💬', visit: '🏠', '': '' };
+            
             const html = sorted.map(v => {
                 const client = data.clients.find(c => c.id === v.clientId);
                 
@@ -1313,13 +1398,18 @@
                                 <span style="font-weight: 600">${client?.name || '未知'}</span>
                                 <span style="font-size: 12px; color: var(--text-muted)">${v.date}</span>
                             </div>
+                            <div style="display: flex; align-items: center; gap: 6px; margin-bottom: 8px;">
+                                <span style="font-size: 14px; background: var(--accent-soft); padding: 2px 8px; border-radius: 4px; color: var(--accent);">
+                                    ${contactTypeIcon[v.contactType] || ''} ${contactTypeMap[v.contactType] || '-'}
+                                </span>
+                            </div>
                             <div style="font-size: 14px; color: var(--text)">${v.detail || '无详情记录'}</div>
                             ${followUpInfo}
                         </div>
                     </div>
                 `;
             }).join('');
-            document.getElementById('records-list').innerHTML = html || '<div class="empty-state">暂无拜访记录</div>';
+            document.getElementById('records-list').innerHTML = html || '<div class="empty-state">暂无联系记录</div>';
         };
 
         const filterRecords = (clientId) => {
@@ -1343,7 +1433,7 @@
             if (viewId === 'calendar') renderCalendar();
             if (viewId === 'records') renderRecords();
             
-            const titles = { home: '工作台', clients: '客户管理', calendar: '拜访日历', records: '拜访记录' };
+            const titles = { home: '工作台', clients: '客户管理', calendar: '联系日历', records: '联系记录' };
             document.getElementById('pageTitle').innerText = titles[viewId];
         };
 
@@ -1386,13 +1476,16 @@
             else if (type === 'history') {
                 const client = data.clients.find(c => c.id === id);
                 const visits = data.visits.filter(v => v.clientId === id).sort((a,b) => new Date(b.date) - new Date(a.date));
-                header.innerText = `拜访履历 - ${client?.name || '未知'}`;
+                header.innerText = `联系履历 - ${client?.name || '未知'}`;
                 
-                body.innerHTML = visits.length === 0 ? '<div class="empty-state">暂无拜访记录</div>' : 
+                const contactTypeMap = { phone: '电话', wechat: '微信', visit: '上门', '': '-' };
+                const contactTypeIcon = { phone: '📞', wechat: '💬', visit: '🏠', '': '' };
+                
+                body.innerHTML = visits.length === 0 ? '<div class="empty-state">暂无联系记录</div>' : 
                     visits.map(v => {
-                        let statusClass = 'tag-pending', statusText = '待拜访';
-                        if(v.status === 'done') { statusClass = 'tag-done'; statusText = '已拜访'; }
-                        if(v.status === 'missed') { statusClass = 'tag-missed'; statusText = '未拜访'; }
+                        let statusClass = 'tag-pending', statusText = '待联系';
+                        if(v.status === 'done') { statusClass = 'tag-done'; statusText = '已联系'; }
+                        if(v.status === 'missed') { statusClass = 'tag-missed'; statusText = '未联系'; }
                         
                         let followUpInfo = '';
                         if (v.stopReason) {
@@ -1401,10 +1494,15 @@
                             followUpInfo = `<div style="font-size:12px; color:var(--accent); margin-top:4px;">下次: ${v.nextDate} ${v.nextGoal || ''}</div>`;
                         }
                         
+                        const contactInfo = v.contactType ? 
+                            `<span style="font-size:12px; background:var(--accent-soft); color:var(--accent); padding:2px 6px; border-radius:4px; margin-left:8px;">
+                                ${contactTypeIcon[v.contactType]} ${contactTypeMap[v.contactType]}
+                            </span>` : '';
+                        
                         return `
                             <div class="history-item">
                                 <div style="display:flex; justify-content:space-between; margin-bottom:4px;">
-                                    <span style="font-weight:600">${v.date}</span>
+                                    <span style="font-weight:600">${v.date}${contactInfo}</span>
                                     <span class="tag ${statusClass}">${statusText}</span>
                                 </div>
                                 <div style="font-size:13px; color:var(--text-muted)">${v.notes || '无计划备注'}</div>
@@ -1440,21 +1538,23 @@
                 saveBtn.onclick = () => closeModal();
             } 
             else if (type === 'visit') {
-                header.innerText = '新建拜访计划';
+                header.innerText = '新建联系计划';
                 const clientOptions = data.clients.map(c => `<option value="${c.id}" ${c.id === preselectedClient ? 'selected' : ''}>${c.name}</option>`).join('');
                 body.innerHTML = `
                     <select class="form-select" id="m_client"><option value="">选择客户 *</option>${clientOptions}</select>
                     <input type="date" class="form-input" id="m_date" value="${dateOverride || getTodayStr()}">
-                    <textarea class="form-input" id="m_notes" placeholder="拜访目的..."></textarea>
+                    <textarea class="form-input" id="m_notes" placeholder="联系目的..."></textarea>
                 `;
             }
             else if (type === 'visit_edit') {
                 const visit = data.visits.find(v => v.id === id);
                 const client = data.clients.find(c => c.id === visit.clientId);
-                header.innerText = '拜访详情';
+                header.innerText = '联系详情';
 
                 const hasStopReason = visit.stopReason && visit.stopReason.trim();
                 const defaultContinue = !hasStopReason;
+
+                const contactTypeMap = { phone: '电话', wechat: '微信', visit: '上门', '': '-' };
 
                 body.innerHTML = `
                     <div style="margin-bottom: 16px; padding: 12px; background: var(--bg); border-radius: 12px;">
@@ -1464,11 +1564,31 @@
 
                     <label style="font-size: 12px; color: var(--text-muted);">当前状态</label>
                     <div class="status-options">
-                        <div class="status-option ${visit.status === 'done' ? 'active done' : ''}" onclick="setStatus('done')">已拜访</div>
+                        <div class="status-option ${visit.status === 'done' ? 'active done' : ''}" onclick="setStatus('done')">已联系</div>
                         <div class="status-option ${visit.status === 'reschedule' ? 'active reschedule' : ''}" onclick="setStatus('reschedule')">改期</div>
-                        <div class="status-option ${visit.status === 'missed' ? 'active missed' : ''}" onclick="setStatus('missed')">未拜访</div>
+                        <div class="status-option ${visit.status === 'missed' ? 'active missed' : ''}" onclick="setStatus('missed')">未联系</div>
                     </div>
                     <input type="hidden" id="v_status" value="${visit.status}">
+
+                    <!-- 联系方式选择（仅已联系时显示） -->
+                    <div id="modal_contact_type_container" style="margin-top: 16px; display: ${visit.status === 'done' ? 'block' : 'none'};">
+                        <label style="font-size: 12px; color: var(--text-muted);">联系方式 <span class="required-star">*</span></label>
+                        <div class="contact-type-options" style="margin-top: 8px;">
+                            <div class="contact-type-option ${visit.contactType === 'phone' ? 'active' : ''}" id="modal_ct_phone" onclick="setModalContactType('phone')">
+                                <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M22 16.92v3a2 2 0 0 1-2.18 2 19.79 19.79 0 0 1-8.63-3.07 19.5 19.5 0 0 1-6-6 19.79 19.79 0 0 1-3.07-8.67A2 2 0 0 1 4.11 2h3a2 2 0 0 1 2 1.72 12.84 12.84 0 0 0 .7 2.81 2 2 0 0 1-.45 2.11L8.09 9.91a16 16 0 0 0 6 6l1.27-1.27a2 2 0 0 1 2.11-.45 12.84 12.84 0 0 0 2.81.7A2 2 0 0 1 22 16.92z"/></svg>
+                                <div>电话</div>
+                            </div>
+                            <div class="contact-type-option ${visit.contactType === 'wechat' ? 'active' : ''}" id="modal_ct_wechat" onclick="setModalContactType('wechat')">
+                                <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M21 11.5a8.38 8.38 0 0 1-.9 3.8 8.5 8.5 0 0 1-7.6 4.7 8.38 8.38 0 0 1-3.8-.9L3 21l1.9-5.7a8.38 8.38 0 0 1-.9-3.8 8.5 8.5 0 0 1 4.7-7.6 8.38 8.38 0 0 1 3.8-.9h.5a8.48 8.48 0 0 1 8 8v.5z"/></svg>
+                                <div>微信</div>
+                            </div>
+                            <div class="contact-type-option ${visit.contactType === 'visit' ? 'active' : ''}" id="modal_ct_visit" onclick="setModalContactType('visit')">
+                                <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M3 9l9-7 9 7v11a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2z"/><polyline points="9 22 9 12 15 12 15 22"/></svg>
+                                <div>上门</div>
+                            </div>
+                        </div>
+                        <input type="hidden" id="v_contact_type" value="${visit.contactType || 'phone'}">
+                    </div>
 
                     <div id="desc_container" style="margin-top: 16px;">
                         <label style="font-size: 12px; color: var(--text-muted);" id="desc_label">情况说明</label>
@@ -1501,7 +1621,7 @@
                         </div>
                     </div>
                     
-                    ${visit.status === 'pending' ? `<button class="btn btn-danger" style="margin-top: 20px;" onclick="deleteVisit(${id})">删除此拜访计划</button>` : ''}
+                    ${visit.status === 'pending' ? `<button class="btn btn-danger" style="margin-top: 20px;" onclick="deleteVisit(${id})">删除此联系计划</button>` : ''}
                 `;
                 
                 window.setStatus = (status) => {
@@ -1517,21 +1637,33 @@
                         }
                     });
 
-                    document.getElementById('reschedule_date_field').style.display = status === 'reschedule' ? 'block' : 'none';
-                    
+                    const contactTypeContainer = document.getElementById('modal_contact_type_container');
                     const label = document.getElementById('desc_label');
                     const input = document.getElementById('v_detail');
+                    const rescheduleField = document.getElementById('reschedule_date_field');
                     
-                    if (status === 'missed') {
-                        label.innerHTML = '未拜访原因 <span class="required-star">*</span>';
-                        input.placeholder = '请填写未拜访原因（必填）';
-                    } else if (status === 'done') {
-                        label.innerText = '拜访详情';
-                        input.placeholder = '记录本次拜访成果...';
+                    if (status === 'done') {
+                        contactTypeContainer.style.display = 'block';
+                        label.innerText = '联系详情';
+                        input.placeholder = '记录本次联系成果...';
+                        rescheduleField.style.display = 'none';
+                    } else if (status === 'missed') {
+                        contactTypeContainer.style.display = 'none';
+                        label.innerHTML = '未联系原因 <span class="required-star">*</span>';
+                        input.placeholder = '请填写未联系原因（必填）';
+                        rescheduleField.style.display = 'none';
                     } else if (status === 'reschedule') {
+                        contactTypeContainer.style.display = 'none';
                         label.innerText = '改期原因';
                         input.placeholder = '请填写改期原因...';
+                        rescheduleField.style.display = 'block';
                     }
+                };
+                
+                window.setModalContactType = (type) => {
+                    document.getElementById('v_contact_type').value = type;
+                    document.querySelectorAll('.contact-type-option').forEach(el => el.classList.remove('active'));
+                    document.getElementById(`modal_ct_${type}`).classList.add('active');
                 };
                 
                 window.toggleModalFollowUp = (type) => {
@@ -1591,7 +1723,7 @@
                 closeModal();
                 
                 setTimeout(() => {
-                    if(confirm("客户信息已保存。是否立即添加拜访计划？")) {
+                    if(confirm("客户信息已保存。是否立即添加联系计划？")) {
                         openModal('visit', null, null, savedClientId);
                     }
                 }, 300);
@@ -1609,7 +1741,7 @@
                 const today = getTodayStr();
 
                 if (date < today) {
-                    if (!confirm("检测到日期已过，是否补录为【已拜访】记录？\n(补录需填写拜访详情)")) {
+                    if (!confirm("检测到日期已过，是否补录为【已联系】记录？\n(补录需填写联系详情)")) {
                         return;
                     }
                     
@@ -1617,15 +1749,32 @@
                     const body = document.getElementById('modalBody');
                     const saveBtn = document.getElementById('modalSaveBtn');
                     
-                    header.innerText = "补录拜访详情";
+                    header.innerText = "补录联系详情";
                     const clientName = data.clients.find(c => c.id === clientId)?.name || '未知';
                     
                     body.innerHTML = `
                         <div style="margin-bottom: 16px; padding: 12px; background: var(--bg); border-radius: 12px;">
                             <div style="font-weight: 600; margin-bottom: 4px;">客户：${clientName}</div>
-                            <div style="font-size: 12px; color: var(--text-muted);">拜访日期：${date}</div>
+                            <div style="font-size: 12px; color: var(--text-muted);">联系日期：${date}</div>
                             <div style="font-size: 12px; color: var(--text-muted);">计划目的：${notes || '无'}</div>
                         </div>
+                        
+                        <label style="font-size: 12px; color: var(--text-muted);">联系方式 <span class="required-star">*</span></label>
+                        <div class="contact-type-options" style="margin-top: 8px; margin-bottom: 16px;">
+                            <div class="contact-type-option active" id="backfill_ct_phone" onclick="setBackfillContactType('phone')">
+                                <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M22 16.92v3a2 2 0 0 1-2.18 2 19.79 19.79 0 0 1-8.63-3.07 19.5 19.5 0 0 1-6-6 19.79 19.79 0 0 1-3.07-8.67A2 2 0 0 1 4.11 2h3a2 2 0 0 1 2 1.72 12.84 12.84 0 0 0 .7 2.81 2 2 0 0 1-.45 2.11L8.09 9.91a16 16 0 0 0 6 6l1.27-1.27a2 2 0 0 1 2.11-.45 12.84 12.84 0 0 0 2.81.7A2 2 0 0 1 22 16.92z"/></svg>
+                                <div>电话</div>
+                            </div>
+                            <div class="contact-type-option" id="backfill_ct_wechat" onclick="setBackfillContactType('wechat')">
+                                <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M21 11.5a8.38 8.38 0 0 1-.9 3.8 8.5 8.5 0 0 1-7.6 4.7 8.38 8.38 0 0 1-3.8-.9L3 21l1.9-5.7a8.38 8.38 0 0 1-.9-3.8 8.5 8.5 0 0 1 4.7-7.6 8.38 8.38 0 0 1 3.8-.9h.5a8.48 8.48 0 0 1 8 8v.5z"/></svg>
+                                <div>微信</div>
+                            </div>
+                            <div class="contact-type-option" id="backfill_ct_visit" onclick="setBackfillContactType('visit')">
+                                <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M3 9l9-7 9 7v11a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2z"/><polyline points="9 22 9 12 15 12 15 22"/></svg>
+                                <div>上门</div>
+                            </div>
+                        </div>
+                        <input type="hidden" id="b_contact_type" value="phone">
                         
                         <label style="font-size: 12px; color: var(--text-muted); display:block; margin-bottom:8px;">后续安排</label>
                         <div class="follow-up-toggle" style="margin-bottom: 12px;">
@@ -1644,14 +1793,15 @@
                             <textarea class="form-input" id="b_stop_reason" style="margin-bottom: 12px; height: 80px;" placeholder="请填写不再跟进的原因（必填）"></textarea>
                         </div>
                         
-                        <label style="font-size: 12px; color: var(--text-muted);">拜访详情 <span class="required-star">*</span></label>
-                        <textarea class="form-input" id="b_detail" style="margin-top:8px; height: 100px; margin-bottom:0;" placeholder="请输入本次拜访的详细情况..."></textarea>
+                        <label style="font-size: 12px; color: var(--text-muted);">联系详情 <span class="required-star">*</span></label>
+                        <textarea class="form-input" id="b_detail" style="margin-top:8px; height: 100px; margin-bottom:0;" placeholder="请输入本次联系的详细情况..."></textarea>
                     `;
 
                     saveBtn.innerText = "保存补录";
                     saveBtn.onclick = () => {
                         const detail = document.getElementById('b_detail').value;
-                        if(!detail.trim()) return alert('请输入拜访详情');
+                        const contactType = document.getElementById('b_contact_type').value;
+                        if(!detail.trim()) return alert('请输入联系详情');
                         
                         const isContinue = document.getElementById('backfill_btn_continue').classList.contains('active');
                         
@@ -1664,7 +1814,8 @@
                             detail: detail, 
                             nextDate: '', 
                             nextGoal: '',
-                            stopReason: ''
+                            stopReason: '',
+                            contactType: contactType
                         };
                         
                         if (isContinue) {
@@ -1682,6 +1833,12 @@
                         renderHome();
                         renderCalendar();
                         renderRecords();
+                    };
+                    
+                    window.setBackfillContactType = (type) => {
+                        document.getElementById('b_contact_type').value = type;
+                        document.querySelectorAll('.contact-type-option').forEach(el => el.classList.remove('active'));
+                        document.getElementById(`backfill_ct_${type}`).classList.add('active');
                     };
                     
                     window.toggleBackfillFollowUp = (type) => {
@@ -1708,7 +1865,7 @@
 
                 const existing = data.visits.find(v => v.clientId === clientId && v.date === date && v.status === 'pending');
                 if (existing) {
-                    const goEdit = confirm("该客户在当天已有拜访计划。\n点击【确定】编辑现有计划，点击【取消】返回修改日期。");
+                    const goEdit = confirm("该客户在当天已有联系计划。\n点击【确定】编辑现有计划，点击【取消】返回修改日期。");
                     if (goEdit) {
                         closeModal();
                         setTimeout(() => openModal('visit_edit', existing.id), 300);
@@ -1725,7 +1882,8 @@
                     detail: '', 
                     nextDate: '', 
                     nextGoal: '',
-                    stopReason: ''
+                    stopReason: '',
+                    contactType: ''
                 });
                 saveData(); closeModal(); renderHome(); renderCalendar();
             }
@@ -1735,11 +1893,18 @@
                 const detail = document.getElementById('v_detail').value;
                 
                 if (status === 'missed' && !detail) {
-                    return alert('未拜访情况下，情况说明为必填项');
+                    return alert('未联系情况下，情况说明为必填项');
                 }
 
                 visit.status = status;
                 visit.detail = detail;
+
+                // 保存联系方式
+                if (status === 'done') {
+                    visit.contactType = document.getElementById('v_contact_type').value;
+                } else {
+                    visit.contactType = '';
+                }
 
                 if (status === 'done') {
                     const isContinue = document.getElementById('modal_btn_continue').classList.contains('active');
@@ -1759,7 +1924,8 @@
                                 detail: '', 
                                 nextDate: '', 
                                 nextGoal: '',
-                                stopReason: ''
+                                stopReason: '',
+                                contactType: ''
                             });
                         }
                     } else {
@@ -1781,7 +1947,7 @@
 
         // --- Helper Actions ---
         window.deleteClient = (id) => {
-            if(confirm('删除客户将同时删除相关拜访记录，确定吗？')) {
+            if(confirm('删除客户将同时删除相关联系记录，确定吗？')) {
                 data.clients = data.clients.filter(c => c.id !== id);
                 data.visits = data.visits.filter(v => v.clientId !== id);
                 saveData();
@@ -1792,7 +1958,7 @@
         };
 
         window.deleteVisit = (id) => {
-            if(confirm('确定要删除这条拜访计划吗？')) {
+            if(confirm('确定要删除这条联系计划吗？')) {
                 data.visits = data.visits.filter(v => v.id !== id);
                 saveData();
                 closeModal();
