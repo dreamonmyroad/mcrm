@@ -754,7 +754,11 @@
                 const stored = localStorage.getItem('crm_app_data_v4');
                 if (stored) {
                     data = JSON.parse(stored);
-                    data.visits.forEach(v => { if (!v.contactType) v.contactType = ''; });
+                    // 数据迁移：确保所有记录都有 status 字段
+                    data.visits.forEach(v => {
+                        if (!v.contactType) v.contactType = '';
+                        if (!v.status) v.status = 'pending';
+                    });
                 } else {
                     initDefaultData();
                 }
@@ -988,7 +992,7 @@
                         <div style="display:flex; gap:2px; justify-content:center; flex-wrap:wrap;">
                             ${visits.slice(0,3).map(v => {
                                 const colors = { pending: '#ffa726', done: '#00d4aa', missed: '#ff5252', reschedule: '#42a5f5' };
-                                return `<div class="visit-dot" style="background:${colors[v.status]}"></div>`;
+                                return `<div class="visit-dot" style="background:${colors[v.status] || colors.pending}"></div>`;
                             }).join('')}
                         </div>
                     </div>
@@ -1042,8 +1046,14 @@
 
         const renderVisitItem = (v) => {
             const c = data.clients.find(x => x.id === v.clientId);
-            const statusMap = { pending: ['tag-pending', '待联系'], done: ['tag-done', '已联系'], missed: ['tag-missed', '未联系'], reschedule: ['tag-reschedule', '已改期'] };
-            const [cls, text] = statusMap[v.status];
+            const statusMap = { 
+                pending: ['tag-pending', '待联系'], 
+                done: ['tag-done', '已联系'], 
+                missed: ['tag-missed', '未联系'], 
+                reschedule: ['tag-reschedule', '已改期'] 
+            };
+            const statusKey = v.status || 'pending';
+            const [cls, text] = statusMap[statusKey] || statusMap.pending;
             const icons = { phone: '📞', wechat: '💬', visit: '🏠', '': '' };
             return `
                 <div style="display: flex; align-items: center; padding: 12px 16px; border-bottom: 1px solid var(--border); cursor: pointer;" onclick="openModal('visit_edit', ${v.id})">
@@ -1135,14 +1145,42 @@
             const overlay = document.getElementById('modalOverlay');
             const body = document.getElementById('modalBody');
             const header = document.getElementById('modalHeader');
-            const saveBtn = document.getElementById('modalSaveBtn');
+            const footer = document.getElementById('modalFooter');
 
             const closeModal = () => overlay.classList.remove('active');
             window.closeModal = closeModal;
 
-            const doSave = () => {
-                // 保存逻辑...
-                if (type === 'client') {
+            // 标准底部按钮（取消+保存）
+            const standardFooter = `
+                <button class="btn btn-secondary" onclick="closeModal()">取消</button>
+                <button class="btn btn-primary" id="modalSaveBtn">保存</button>
+            `;
+
+            // 带删除的底部按钮（删除+取消+保存）
+            const deleteFooter = (deleteFn) => `
+                <button class="btn btn-danger" onclick="${deleteFn}">删除</button>
+                <button class="btn btn-secondary" onclick="closeModal()" style="flex:1;">取消</button>
+                <button class="btn btn-primary" id="modalSaveBtn" style="flex:1;">保存</button>
+            `;
+
+            if (type === 'client') {
+                header.innerText = id ? '编辑客户' : '新增客户';
+                let c = id ? data.clients.find(x => x.id === id) : { name: '', contact: '', industryId: '', level: 'normal', notes: '' };
+                const indOpts = data.industries.map(i => `<option value="${i.id}" ${c.industryId === i.id ? 'selected' : ''}>${i.name}</option>`).join('');
+                body.innerHTML = `
+                    <input type="text" class="form-input" id="c_name" value="${c.name}" placeholder="客户名称 *">
+                    <input type="text" class="form-input" id="c_contact" value="${c.contact || ''}" placeholder="联系人">
+                    <div style="display: flex; gap: 8px; align-items: center;">
+                        <select class="form-select" id="c_industry" style="margin-bottom:0; flex:1"><option value="">未选择</option>${indOpts}</select>
+                        <button class="btn btn-secondary btn-small" onclick="openModal('industry')">管理</button>
+                    </div>
+                    <select class="form-select" id="c_level" style="margin-top:12px;"><option value="normal" ${c.level === 'normal' ? 'selected' : ''}>一般</option><option value="important" ${c.level === 'important' ? 'selected' : ''}>重要</option></select>
+                    <textarea class="form-input" id="c_notes" placeholder="备注">${c.notes || ''}</textarea>
+                    ${id ? `<button class="btn btn-danger" style="margin-top:10px;" onclick="deleteClient(${id})">删除客户</button>` : ''}
+                `;
+                footer.innerHTML = standardFooter;
+                
+                document.getElementById('modalSaveBtn').onclick = () => {
                     const name = document.getElementById('c_name')?.value;
                     if (!name) return alert('请填写客户名称');
                     const clientData = {
@@ -1163,85 +1201,7 @@
                         }, 300);
                     }
                     saveData(); closeModal(); renderClients(); renderHome();
-                }
-                else if (type === 'visit') {
-                    const clientId = parseInt(document.getElementById('m_client')?.value);
-                    const date = document.getElementById('m_date')?.value;
-                    const notes = document.getElementById('m_notes')?.value || '';
-                    if (!clientId || !date) return alert('请选择客户和日期');
-
-                    // 检查是否已有计划
-                    const existing = data.visits.find(v => v.clientId === clientId && v.date === date && v.status === 'pending');
-                    if (existing) {
-                        if (confirm('该客户当天已有联系计划。\n点击【确定】编辑现有计划，【取消】返回修改。')) {
-                            closeModal();
-                            setTimeout(() => openModal('visit_edit', existing.id), 300);
-                        }
-                        return;
-                    }
-
-                    data.visits.push({
-                        id: Date.now(), clientId, date, status: 'pending', notes,
-                        detail: '', nextDate: '', nextGoal: '', stopReason: '', contactType: ''
-                    });
-                    saveData(); closeModal(); renderHome(); renderCalendar();
-                }
-                else if (type === 'visit_edit') {
-                    const visit = data.visits.find(v => v.id === id);
-                    const status = document.getElementById('v_status')?.value;
-                    const detail = document.getElementById('v_detail')?.value || '';
-
-                    if (status === 'missed' && !detail.trim()) return alert('请填写未联系原因');
-
-                    visit.status = status;
-                    visit.detail = detail;
-                    visit.contactType = status === 'done' ? (document.getElementById('v_contact_type')?.value || '') : '';
-
-                    if (status === 'done') {
-                        const isContinue = document.getElementById('modal_btn_continue')?.classList.contains('active');
-                        if (isContinue) {
-                            visit.nextDate = document.getElementById('v_next_date')?.value || '';
-                            visit.nextGoal = document.getElementById('v_next_goal')?.value || '';
-                            visit.stopReason = '';
-                            if (visit.nextDate) {
-                                data.visits.push({
-                                    id: Date.now() + 1, clientId: visit.clientId, date: visit.nextDate,
-                                    status: 'pending', notes: `跟进: ${visit.nextGoal || ''}`,
-                                    detail: '', nextDate: '', nextGoal: '', stopReason: '', contactType: ''
-                                });
-                            }
-                        } else {
-                            const stopReason = document.getElementById('v_stop_reason')?.value || '';
-                            if (!stopReason.trim()) return alert('请填写不再跟进的原因');
-                            visit.stopReason = stopReason;
-                            visit.nextDate = ''; visit.nextGoal = '';
-                        }
-                    } else if (status === 'reschedule') {
-                        const newDate = document.getElementById('v_reschedule_date')?.value;
-                        if (newDate) { visit.date = newDate; visit.status = 'pending'; }
-                    }
-
-                    saveData(); closeModal(); renderHome(); renderCalendar(); renderRecords();
-                }
-            };
-
-            saveBtn.onclick = doSave;
-
-            if (type === 'client') {
-                header.innerText = id ? '编辑客户' : '新增客户';
-                let c = id ? data.clients.find(x => x.id === id) : { name: '', contact: '', industryId: '', level: 'normal', notes: '' };
-                const indOpts = data.industries.map(i => `<option value="${i.id}" ${c.industryId === i.id ? 'selected' : ''}>${i.name}</option>`).join('');
-                body.innerHTML = `
-                    <input type="text" class="form-input" id="c_name" value="${c.name}" placeholder="客户名称 *">
-                    <input type="text" class="form-input" id="c_contact" value="${c.contact || ''}" placeholder="联系人">
-                    <div style="display: flex; gap: 8px; align-items: center;">
-                        <select class="form-select" id="c_industry" style="margin-bottom:0; flex:1"><option value="">未选择</option>${indOpts}</select>
-                        <button class="btn btn-secondary btn-small" onclick="openModal('industry')">管理</button>
-                    </div>
-                    <select class="form-select" id="c_level" style="margin-top:12px;"><option value="normal" ${c.level === 'normal' ? 'selected' : ''}>一般</option><option value="important" ${c.level === 'important' ? 'selected' : ''}>重要</option></select>
-                    <textarea class="form-input" id="c_notes" placeholder="备注">${c.notes || ''}</textarea>
-                    ${id ? `<button class="btn btn-danger" style="margin-top:10px;" onclick="deleteClient(${id})">删除客户</button>` : ''}
-                `;
+                };
             }
             else if (type === 'industry') {
                 header.innerText = '行业管理';
@@ -1258,8 +1218,7 @@
                         <button class="btn btn-primary btn-small" onclick="addIndustry()">添加</button>
                     </div>
                 `;
-                saveBtn.innerText = '关闭';
-                saveBtn.onclick = closeModal;
+                footer.innerHTML = `<button class="btn btn-secondary" onclick="closeModal()">关闭</button>`;
             }
             else if (type === 'visit') {
                 header.innerText = '新建联系计划';
@@ -1269,6 +1228,29 @@
                     <input type="date" class="form-input" id="m_date" value="${dateOverride || getTodayStr()}">
                     <textarea class="form-input" id="m_notes" placeholder="联系目的..."></textarea>
                 `;
+                footer.innerHTML = standardFooter;
+                
+                document.getElementById('modalSaveBtn').onclick = () => {
+                    const clientId = parseInt(document.getElementById('m_client')?.value);
+                    const date = document.getElementById('m_date')?.value;
+                    const notes = document.getElementById('m_notes')?.value || '';
+                    if (!clientId || !date) return alert('请选择客户和日期');
+
+                    const existing = data.visits.find(v => v.clientId === clientId && v.date === date && v.status === 'pending');
+                    if (existing) {
+                        if (confirm('该客户当天已有联系计划。\n点击【确定】编辑现有计划，【取消】返回修改。')) {
+                            closeModal();
+                            setTimeout(() => openModal('visit_edit', existing.id), 300);
+                        }
+                        return;
+                    }
+
+                    data.visits.push({
+                        id: Date.now(), clientId, date, status: 'pending', notes,
+                        detail: '', nextDate: '', nextGoal: '', stopReason: '', contactType: ''
+                    });
+                    saveData(); closeModal(); renderHome(); renderCalendar();
+                };
             }
             else if (type === 'visit_edit') {
                 const visit = data.visits.find(v => v.id === id);
@@ -1286,76 +1268,75 @@
 
                     <label style="font-size:12px; color:var(--text-muted);">当前状态</label>
                     <div class="status-options" style="margin-bottom:16px;">
-                        <div class="status-option ${visit.status === 'done' ? 'active done' : ''}" onclick="setStatus('done')">已联系</div>
-                        <div class="status-option ${visit.status === 'reschedule' ? 'active reschedule' : ''}" onclick="setStatus('reschedule')">改期</div>
-                        <div class="status-option ${visit.status === 'missed' ? 'active missed' : ''}" onclick="setStatus('missed')">未联系</div>
+                        <div class="status-option ${visit.status === 'done' ? 'active done' : ''}" onclick="setEditStatus('done')">已联系</div>
+                        <div class="status-option ${visit.status === 'reschedule' ? 'active reschedule' : ''}" onclick="setEditStatus('reschedule')">改期</div>
+                        <div class="status-option ${visit.status === 'missed' ? 'active missed' : ''}" onclick="setEditStatus('missed')">未联系</div>
                     </div>
-                    <input type="hidden" id="v_status" value="${visit.status}">
+                    <input type="hidden" id="edit_status" value="${visit.status}">
 
-                    <div id="modal_contact_type_container" style="margin-top:16px; display:${visit.status === 'done' ? 'block' : 'none'};">
+                    <div id="edit_contact_type_container" style="margin-top:16px; display:${visit.status === 'done' ? 'block' : 'none'};">
                         <label style="font-size:12px; color:var(--text-muted);">联系方式 <span class="required-star">*</span></label>
                         <div class="contact-type-options" style="margin-top:8px;">
-                            <div class="contact-type-option ${visit.contactType === 'phone' ? 'active' : ''}" id="modal_ct_phone" onclick="setModalContactType('phone')">
+                            <div class="contact-type-option ${visit.contactType === 'phone' ? 'active' : ''}" id="edit_ct_phone" onclick="setEditContactType('phone')">
                                 <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M22 16.92v3a2 2 0 0 1-2.18 2 19.79 19.79 0 0 1-8.63-3.07 19.5 19.5 0 0 1-6-6 19.79 19.79 0 0 1-3.07-8.67A2 2 0 0 1 4.11 2h3a2 2 0 0 1 2 1.72 12.84 12.84 0 0 0 .7 2.81 2 2 0 0 1-.45 2.11L8.09 9.91a16 16 0 0 0 6 6l1.27-1.27a2 2 0 0 1 2.11-.45 12.84 12.84 0 0 0 2.81.7A2 2 0 0 1 22 16.92z"/></svg>
                                 <div>电话</div>
                             </div>
-                            <div class="contact-type-option ${visit.contactType === 'wechat' ? 'active' : ''}" id="modal_ct_wechat" onclick="setModalContactType('wechat')">
+                            <div class="contact-type-option ${visit.contactType === 'wechat' ? 'active' : ''}" id="edit_ct_wechat" onclick="setEditContactType('wechat')">
                                 <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M21 11.5a8.38 8.38 0 0 1-.9 3.8 8.5 8.5 0 0 1-7.6 4.7 8.38 8.38 0 0 1-3.8-.9L3 21l1.9-5.7a8.38 8.38 0 0 1-.9-3.8 8.5 8.5 0 0 1 4.7-7.6 8.38 8.38 0 0 1 3.8-.9h.5a8.48 8.48 0 0 1 8 8v.5z"/></svg>
                                 <div>微信</div>
                             </div>
-                            <div class="contact-type-option ${visit.contactType === 'visit' ? 'active' : ''}" id="modal_ct_visit" onclick="setModalContactType('visit')">
+                            <div class="contact-type-option ${visit.contactType === 'visit' ? 'active' : ''}" id="edit_ct_visit" onclick="setEditContactType('visit')">
                                 <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M3 9l9-7 9 7v11a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2z"/><polyline points="9 22 9 12 15 12 15 22"/></svg>
                                 <div>上门</div>
                             </div>
                         </div>
-                        <input type="hidden" id="v_contact_type" value="${visit.contactType || 'phone'}">
+                        <input type="hidden" id="edit_contact_type" value="${visit.contactType || 'phone'}">
                     </div>
 
-                    <div id="desc_container" style="margin-top:16px;">
-                        <label style="font-size:12px; color:var(--text-muted);" id="desc_label">${visit.status === 'missed' ? '未联系原因 <span class="required-star">*</span>' : '情况说明'}</label>
-                        <textarea class="form-input" id="v_detail" style="margin-top:8px; margin-bottom:0;" placeholder="${visit.status === 'missed' ? '请填写未联系原因' : '记录详情...'}">${visit.detail || ''}</textarea>
+                    <div id="edit_desc_container" style="margin-top:16px;">
+                        <label style="font-size:12px; color:var(--text-muted);" id="edit_desc_label">${visit.status === 'missed' ? '未联系原因 <span class="required-star">*</span>' : '情况说明'}</label>
+                        <textarea class="form-input" id="edit_detail" style="margin-top:8px; margin-bottom:0;" placeholder="${visit.status === 'missed' ? '请填写未联系原因' : '记录详情...'}">${visit.detail || ''}</textarea>
                     </div>
 
                     <div style="margin-top:16px;">
                         <label style="font-size:12px; color:var(--text-muted); display:block; margin-bottom:8px;">后续安排</label>
                         <div class="follow-up-toggle" style="margin-bottom:12px;">
-                            <div class="follow-up-btn ${defaultContinue ? 'active' : ''}" id="modal_btn_continue" onclick="toggleModalFollowUp('continue')">继续跟进</div>
-                            <div class="follow-up-btn stop ${!defaultContinue ? 'active' : ''}" id="modal_btn_stop" onclick="toggleModalFollowUp('stop')">不再跟进</div>
+                            <div class="follow-up-btn ${defaultContinue ? 'active' : ''}" id="edit_btn_continue" onclick="toggleEditFollowUp('continue')">继续跟进</div>
+                            <div class="follow-up-btn stop ${!defaultContinue ? 'active' : ''}" id="edit_btn_stop" onclick="toggleEditFollowUp('stop')">不再跟进</div>
                         </div>
                         
-                        <div class="follow-up-content ${defaultContinue ? 'show' : ''}" id="modal_content_continue">
+                        <div class="follow-up-content ${defaultContinue ? 'show' : ''}" id="edit_content_continue">
                             <div style="display:flex; gap:8px; margin-bottom:8px;">
-                                <input type="date" class="form-input" id="v_next_date" style="flex:1; margin-bottom:0;" value="${visit.nextDate || ''}">
+                                <input type="date" class="form-input" id="edit_next_date" style="flex:1; margin-bottom:0;" value="${visit.nextDate || ''}">
                             </div>
-                            <input type="text" class="form-input" id="v_next_goal" style="margin-bottom:0;" value="${visit.nextGoal || ''}" placeholder="跟进目标">
+                            <input type="text" class="form-input" id="edit_next_goal" style="margin-bottom:0;" value="${visit.nextGoal || ''}" placeholder="跟进目标">
                         </div>
                         
-                        <div class="follow-up-content ${!defaultContinue ? 'show' : ''}" id="modal_content_stop">
-                            <textarea class="form-input" id="v_stop_reason" style="margin-bottom:0; height:80px;" placeholder="请填写不再跟进的原因（必填）">${visit.stopReason || ''}</textarea>
+                        <div class="follow-up-content ${!defaultContinue ? 'show' : ''}" id="edit_content_stop">
+                            <textarea class="form-input" id="edit_stop_reason" style="margin-bottom:0; height:80px;" placeholder="请填写不再跟进的原因（必填）">${visit.stopReason || ''}</textarea>
                         </div>
                     </div>
 
-                    <div id="reschedule_date_field" style="margin-top:16px; display:${visit.status === 'reschedule' ? 'block' : 'none'};">
+                    <div id="edit_reschedule_field" style="margin-top:16px; display:${visit.status === 'reschedule' ? 'block' : 'none'};">
                         <label style="font-size:12px; color:var(--text-muted);">改期至</label>
-                        <input type="date" class="form-input" id="v_reschedule_date" value="${visit.date}">
+                        <input type="date" class="form-input" id="edit_reschedule_date" value="${visit.date}">
                     </div>
-                    
-                    ${visit.status === 'pending' ? `<button class="btn btn-danger" style="margin-top:20px;" onclick="deleteVisit(${id})">删除此计划</button>` : ''}
                 `;
 
-                window.setStatus = (s) => {
-                    document.getElementById('v_status').value = s;
+                footer.innerHTML = deleteFooter(`deleteVisit(${id})`);
+
+                window.setEditStatus = (s) => {
+                    document.getElementById('edit_status').value = s;
                     document.querySelectorAll('.status-option').forEach(el => {
                         el.classList.remove('active', 'done', 'reschedule', 'missed');
                         if (el.getAttribute('onclick').includes(`'${s}'`)) {
-                            el.classList.add('active');
-                            el.classList.add(s);
+                            el.classList.add('active', s);
                         }
                     });
-                    const ct = document.getElementById('modal_contact_type_container');
-                    const label = document.getElementById('desc_label');
-                    const input = document.getElementById('v_detail');
-                    const rf = document.getElementById('reschedule_date_field');
+                    const ct = document.getElementById('edit_contact_type_container');
+                    const label = document.getElementById('edit_desc_label');
+                    const input = document.getElementById('edit_detail');
+                    const rf = document.getElementById('edit_reschedule_field');
                     
                     ct.style.display = s === 'done' ? 'block' : 'none';
                     if (s === 'done') {
@@ -1373,17 +1354,17 @@
                     }
                 };
 
-                window.setModalContactType = (t) => {
-                    document.getElementById('v_contact_type').value = t;
+                window.setEditContactType = (t) => {
+                    document.getElementById('edit_contact_type').value = t;
                     document.querySelectorAll('.contact-type-option').forEach(el => el.classList.remove('active'));
-                    document.getElementById(`modal_ct_${t}`).classList.add('active');
+                    document.getElementById(`edit_ct_${t}`).classList.add('active');
                 };
 
-                window.toggleModalFollowUp = (t) => {
-                    const bc = document.getElementById('modal_btn_continue');
-                    const bs = document.getElementById('modal_btn_stop');
-                    const cc = document.getElementById('modal_content_continue');
-                    const cs = document.getElementById('modal_content_stop');
+                window.toggleEditFollowUp = (t) => {
+                    const bc = document.getElementById('edit_btn_continue');
+                    const bs = document.getElementById('edit_btn_stop');
+                    const cc = document.getElementById('edit_content_continue');
+                    const cs = document.getElementById('edit_content_stop');
                     if (t === 'continue') {
                         bc.classList.add('active'); bs.classList.remove('active');
                         cc.classList.add('show'); cs.classList.remove('show');
@@ -1391,6 +1372,69 @@
                         bc.classList.remove('active'); bs.classList.add('active');
                         cc.classList.remove('show'); cs.classList.add('show');
                     }
+                };
+
+                document.getElementById('modalSaveBtn').onclick = () => {
+                    const status = document.getElementById('edit_status').value;
+                    const detail = document.getElementById('edit_detail').value;
+                    
+                    if (status === 'missed' && !detail.trim()) return alert('请填写未联系原因');
+
+                    visit.status = status;
+                    visit.detail = detail;
+                    visit.contactType = status === 'done' ? document.getElementById('edit_contact_type').value : '';
+
+                    if (status === 'done') {
+                        const isContinue = document.getElementById('edit_btn_continue').classList.contains('active');
+                        if (isContinue) {
+                            const nextDate = document.getElementById('edit_next_date').value;
+                            const nextGoal = document.getElementById('edit_next_goal').value;
+                            visit.nextDate = nextDate;
+                            visit.nextGoal = nextGoal;
+                            visit.stopReason = '';
+                            
+                            if (nextDate) {
+                                // 检查是否已存在相同的待办（防重复）
+                                const exists = data.visits.find(v => 
+                                    v.clientId === visit.clientId && 
+                                    v.date === nextDate && 
+                                    v.status === 'pending'
+                                );
+                                if (!exists) {
+                                    data.visits.push({
+                                        id: Date.now() + Math.floor(Math.random() * 1000),
+                                        clientId: visit.clientId,
+                                        date: nextDate,
+                                        status: 'pending',
+                                        notes: `跟进: ${nextGoal || ''}`,
+                                        detail: '',
+                                        nextDate: '',
+                                        nextGoal: '',
+                                        stopReason: '',
+                                        contactType: ''
+                                    });
+                                }
+                            }
+                        } else {
+                            const stopReason = document.getElementById('edit_stop_reason').value;
+                            if (!stopReason.trim()) return alert('请填写不再跟进的原因');
+                            visit.stopReason = stopReason;
+                            visit.nextDate = '';
+                            visit.nextGoal = '';
+                        }
+                    } else if (status === 'reschedule') {
+                        const newDate = document.getElementById('edit_reschedule_date').value;
+                        if (newDate) {
+                            visit.date = newDate;
+                            visit.status = 'pending';
+                        }
+                    }
+
+                    saveData();
+                    closeModal();
+                    renderHome();
+                    renderCalendar();
+                    renderRecords();
                 };
             }
             else if (type === 'history') {
@@ -1404,7 +1448,7 @@
                 body.innerHTML = visits.length === 0 ? '<div class="empty-state">暂无联系记录</div>' :
                     visits.map(v => {
                         const statusMap = { pending: ['tag-pending', '待联系'], done: ['tag-done', '已联系'], missed: ['tag-missed', '未联系'], reschedule: ['tag-reschedule', '已改期'] };
-                        const [cls, txt] = statusMap[v.status];
+                        const [cls, txt] = statusMap[v.status] || statusMap.pending;
                         let follow = v.stopReason ? `<div style="font-size:12px; color:var(--danger); margin-top:4px;">不再跟进: ${v.stopReason}</div>` :
                             v.nextDate ? `<div style="font-size:12px; color:var(--accent); margin-top:4px;">下次: ${v.nextDate} ${v.nextGoal || ''}</div>` : '';
                         const ct = v.contactType ? `<span style="font-size:12px; background:var(--accent-soft); color:var(--accent); padding:2px 6px; border-radius:4px; margin-left:8px;">${icons[v.contactType]} ${contactMap[v.contactType]}</span>` : '';
@@ -1421,29 +1465,34 @@
                         `;
                     }).join('');
                 
-                saveBtn.style.display = 'none';
-                document.querySelector('.modal-footer .btn-secondary').innerText = '关闭';
+                footer.innerHTML = `<button class="btn btn-secondary" onclick="closeModal()">关闭</button>`;
                 overlay.classList.add('active');
                 return;
             }
 
-            saveBtn.style.display = 'block';
-            document.querySelector('.modal-footer .btn-secondary').innerText = '取消';
             overlay.classList.add('active');
         };
 
+        // ===== 首页反馈弹窗（修复版）=====
         window.openFeedbackModal = (visitId) => {
+            // 重新获取 visit 对象，确保是最新数据
             const visit = data.visits.find(v => v.id === visitId);
+            if (!visit) {
+                console.error('Visit not found:', visitId);
+                return;
+            }
+            
             const client = data.clients.find(c => c.id === visit.clientId);
             const overlay = document.getElementById('modalOverlay');
             const body = document.getElementById('modalBody');
             const header = document.getElementById('modalHeader');
-            const saveBtn = document.getElementById('modalSaveBtn');
+            const footer = document.getElementById('modalFooter');
 
             header.innerText = `反馈 - ${client?.name || '未知'}`;
             
-            const hasStop = visit.stopReason && visit.stopReason.trim();
-            const defaultContinue = !hasStop;
+            // 判断默认跟进状态：如果有 stopReason 则默认停止，否则继续
+            const hasStopReason = visit.stopReason && visit.stopReason.trim();
+            const defaultToContinue = !hasStopReason;
 
             body.innerHTML = `
                 <div style="margin-bottom:16px; padding:12px; background:var(--bg); border-radius:12px;">
@@ -1475,7 +1524,7 @@
                             <div>上门</div>
                         </div>
                     </div>
-                    <input type="hidden" id="fb_contact_type" value="phone">
+                    <input type="hidden" id="fb_contact_type" value="${visit.contactType || 'phone'}">
                 </div>
 
                 <div id="fb_detail_container">
@@ -1485,18 +1534,18 @@
 
                 <label style="font-size:12px; color:var(--text-muted); display:block; margin-bottom:8px;">后续安排</label>
                 <div class="follow-up-toggle" style="margin-bottom:12px;">
-                    <div class="follow-up-btn ${defaultContinue ? 'active' : ''}" id="fb_btn_continue" onclick="toggleFbFollowUp('continue')">继续跟进</div>
-                    <div class="follow-up-btn stop ${!defaultContinue ? 'active' : ''}" id="fb_btn_stop" onclick="toggleFbFollowUp('stop')">不再跟进</div>
+                    <div class="follow-up-btn ${defaultToContinue ? 'active' : ''}" id="fb_btn_continue" onclick="toggleFbFollowUp('continue')">继续跟进</div>
+                    <div class="follow-up-btn stop ${!defaultToContinue ? 'active' : ''}" id="fb_btn_stop" onclick="toggleFbFollowUp('stop')">不再跟进</div>
                 </div>
                 
-                <div class="follow-up-content ${defaultContinue ? 'show' : ''}" id="fb_content_continue">
+                <div class="follow-up-content ${defaultToContinue ? 'show' : ''}" id="fb_content_continue">
                     <div style="display:flex; gap:8px; margin-bottom:8px;">
                         <input type="date" class="form-input" id="fb_next_date" style="flex:1; margin-bottom:0;" value="${visit.nextDate || ''}">
                     </div>
                     <input type="text" class="form-input" id="fb_next_goal" style="margin-bottom:0;" value="${visit.nextGoal || ''}" placeholder="跟进目标">
                 </div>
                 
-                <div class="follow-up-content ${!defaultContinue ? 'show' : ''}" id="fb_content_stop">
+                <div class="follow-up-content ${!defaultToContinue ? 'show' : ''}" id="fb_content_stop">
                     <textarea class="form-input" id="fb_stop_reason" style="margin-bottom:0; height:80px;" placeholder="请填写不再跟进的原因（必填）">${visit.stopReason || ''}</textarea>
                 </div>
 
@@ -1506,20 +1555,30 @@
                 </div>
             `;
 
+            // 设置底部按钮：删除 + 取消 + 保存
+            footer.innerHTML = `
+                <button class="btn btn-danger" onclick="deleteVisitFromFeedback(${visit.id})">删除</button>
+                <button class="btn btn-secondary" onclick="closeModal()" style="flex:1;">取消</button>
+                <button class="btn btn-primary" id="modalSaveBtn" style="flex:1;">保存</button>
+            `;
+
+            // 状态切换函数
             window.setFbStatus = (s) => {
                 document.getElementById('fb_status').value = s;
                 document.querySelectorAll('.status-option').forEach(el => {
                     el.classList.remove('active', 'done', 'reschedule', 'missed');
                     if (el.getAttribute('onclick').includes(`'${s}'`)) {
-                        el.classList.add('active');
-                        el.classList.add(s);
+                        el.classList.add('active', s);
                     }
                 });
+                
                 const ct = document.getElementById('fb_contact_type_container');
                 const label = document.getElementById('fb_detail_label');
                 const input = document.getElementById('fb_detail');
                 const rf = document.getElementById('fb_reschedule_field');
+                
                 ct.style.display = s === 'done' ? 'block' : 'none';
+                
                 if (s === 'done') {
                     label.innerText = '联系详情';
                     input.placeholder = '记录本次联系成果...';
@@ -1535,60 +1594,41 @@
                 }
             };
 
+            // 联系方式切换
             window.setFbContactType = (t) => {
                 document.getElementById('fb_contact_type').value = t;
                 document.querySelectorAll('.contact-type-option').forEach(el => el.classList.remove('active'));
-                document.getElementById(`fb_ct_${t}`).classList.add('active');
+                document.getElementById(`fb_ct_${t}`)?.classList.add('active');
             };
 
+            // 跟进/停止切换
             window.toggleFbFollowUp = (t) => {
                 const bc = document.getElementById('fb_btn_continue');
                 const bs = document.getElementById('fb_btn_stop');
                 const cc = document.getElementById('fb_content_continue');
                 const cs = document.getElementById('fb_content_stop');
+                
                 if (t === 'continue') {
-                    bc.classList.add('active'); bs.classList.remove('active');
-                    cc.classList.add('show'); cs.classList.remove('show');
+                    bc?.classList.add('active');
+                    bs?.classList.remove('active');
+                    cc?.classList.add('show');
+                    cs?.classList.remove('show');
                 } else {
-                    bc.classList.remove('active'); bs.classList.add('active');
-                    cc.classList.remove('show'); cs.classList.add('show');
+                    bc?.classList.remove('active');
+                    bs?.classList.add('active');
+                    cc?.classList.remove('show');
+                    cs?.classList.add('show');
                 }
             };
 
-            saveBtn.onclick = () => {
-                const status = document.getElementById('fb_status').value;
-                const detail = document.getElementById('fb_detail').value;
-                if (status === 'missed' && !detail.trim()) return alert('请填写未联系原因');
-                
-                visit.status = status;
-                visit.detail = detail;
-                visit.contactType = status === 'done' ? document.getElementById('fb_contact_type').value : '';
+            // 初始化联系方式显示
+            const savedContactType = visit.contactType || 'phone';
+            setFbContactType(savedContactType);
 
-                if (status === 'done') {
-                    const isContinue = document.getElementById('fb_btn_continue').classList.contains('active');
-                    if (isContinue) {
-                        visit.nextDate = document.getElementById('fb_next_date').value;
-                        visit.nextGoal = document.getElementById('fb_next_goal').value;
-                        visit.stopReason = '';
-                        if (visit.nextDate) {
-                            data.visits.push({
-                                id: Date.now() + 1, clientId: visit.clientId, date: visit.nextDate,
-                                status: 'pending', notes: `跟进: ${visit.nextGoal || ''}`,
-                                detail: '', nextDate: '', nextGoal: '', stopReason: '', contactType: ''
-                            });
-                        }
-                    } else {
-                        const stopReason = document.getElementById('fb_stop_reason').value;
-                        if (!stopReason.trim()) return alert('请填写不再跟进的原因');
-                        visit.stopReason = stopReason;
-                        visit.nextDate = ''; visit.nextGoal = '';
-                    }
-                } else if (status === 'reschedule') {
-                    const newDate = document.getElementById('fb_reschedule_date').value;
-                    if (newDate) visit.date = newDate;
-                    visit.status = 'pending';
-                }
-
+            // 删除函数
+            window.deleteVisitFromFeedback = (id) => {
+                if (!confirm('确定要删除这条联系计划吗？')) return;
+                data.visits = data.visits.filter(v => v.id !== id);
                 saveData();
                 closeModal();
                 renderHome();
@@ -1596,8 +1636,102 @@
                 renderRecords();
             };
 
-            saveBtn.innerText = '保存';
-            document.querySelector('.modal-footer .btn-secondary').innerText = '取消';
+            // 保存按钮事件 - 关键修复：使用局部变量，避免闭包问题
+            document.getElementById('modalSaveBtn').onclick = () => {
+                const currentVisitId = visitId; // 保存当前ID
+                const currentVisit = data.visits.find(v => v.id === currentVisitId);
+                
+                if (!currentVisit) {
+                    alert('记录不存在，可能已被删除');
+                    closeModal();
+                    return;
+                }
+
+                const status = document.getElementById('fb_status').value;
+                const detail = document.getElementById('fb_detail').value;
+                
+                // 验证
+                if (status === 'missed' && !detail.trim()) {
+                    return alert('请填写未联系原因');
+                }
+
+                // 更新当前记录
+                currentVisit.status = status;
+                currentVisit.detail = detail;
+                currentVisit.contactType = status === 'done' ? document.getElementById('fb_contact_type').value : '';
+
+                // 处理后续安排
+                if (status === 'done') {
+                    const isContinue = document.getElementById('fb_btn_continue')?.classList.contains('active');
+                    
+                    if (isContinue) {
+                        // 继续跟进：设置当前记录的下次信息
+                        const nextDate = document.getElementById('fb_next_date')?.value || '';
+                        const nextGoal = document.getElementById('fb_next_goal')?.value || '';
+                        
+                        currentVisit.nextDate = nextDate;
+                        currentVisit.nextGoal = nextGoal;
+                        currentVisit.stopReason = '';
+                        
+                        // 创建新的待办记录
+                        if (nextDate) {
+                            // 检查是否已存在相同的待办（防重复）
+                            const exists = data.visits.find(v => 
+                                v.clientId === currentVisit.clientId && 
+                                v.date === nextDate && 
+                                v.status === 'pending' &&
+                                v.id !== currentVisit.id
+                            );
+                            
+                            if (!exists) {
+                                const newVisit = {
+                                    id: Date.now() + Math.floor(Math.random() * 1000), // 确保唯一ID
+                                    clientId: currentVisit.clientId,
+                                    date: nextDate,
+                                    status: 'pending', // 明确设置为待办
+                                    notes: `跟进: ${nextGoal || ''}`,
+                                    detail: '',
+                                    nextDate: '',
+                                    nextGoal: '',
+                                    stopReason: '',
+                                    contactType: ''
+                                };
+                                data.visits.push(newVisit);
+                                console.log('Created new pending visit:', newVisit);
+                            }
+                        }
+                    } else {
+                        // 停止跟进
+                        const stopReason = document.getElementById('fb_stop_reason')?.value || '';
+                        if (!stopReason.trim()) {
+                            return alert('请填写不再跟进的原因');
+                        }
+                        currentVisit.stopReason = stopReason;
+                        currentVisit.nextDate = '';
+                        currentVisit.nextGoal = '';
+                    }
+                } else if (status === 'reschedule') {
+                    // 改期
+                    const newDate = document.getElementById('fb_reschedule_date')?.value;
+                    if (newDate) {
+                        currentVisit.date = newDate;
+                        // 改期后保持待办状态
+                        currentVisit.status = 'pending';
+                    }
+                }
+
+                // 保存并刷新
+                saveData();
+                closeModal();
+                
+                // 延迟刷新确保数据同步
+                setTimeout(() => {
+                    renderHome();
+                    renderCalendar();
+                    renderRecords();
+                }, 10);
+            };
+
             overlay.classList.add('active');
         };
 
@@ -1644,15 +1778,13 @@
             renderClients();
         };
 
-        // ===== PWA 功能（简化版，GitHub Pages 兼容）=====
+        // ===== PWA 功能 =====
         if ('serviceWorker' in navigator) {
-            // 使用最简单的 SW，避免 CSP 问题
             navigator.serviceWorker.register('data:text/javascript,').catch(() => {
                 console.log('SW registration skipped');
             });
         }
 
-        // PWA 安装提示
         let deferredPrompt;
         const installToast = document.getElementById('pwaInstallToast');
         
