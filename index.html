@@ -1257,6 +1257,57 @@
                 const client = data.clients.find(c => c.id === visit.clientId);
                 header.innerText = '联系详情';
 
+                // ========== pending 状态：简单编辑（可调整时间） ==========
+                if (visit.status === 'pending') {
+                    body.innerHTML = `
+                        <div style="margin-bottom:16px; padding:12px; background:var(--bg); border-radius:12px;">
+                            <div style="font-weight:600; margin-bottom:4px;">${client?.name || '未知'}</div>
+                            <div style="font-size:12px; color:var(--text-muted);">当前状态: <span class="tag tag-pending">待联系</span></div>
+                        </div>
+                        
+                        <label style="font-size:12px; color:var(--text-muted);">联系日期 <span class="required-star">*</span></label>
+                        <input type="date" class="form-input" id="edit_pending_date" value="${visit.date}" style="margin-bottom:16px;">
+                        
+                        <label style="font-size:12px; color:var(--text-muted);">联系目的</label>
+                        <textarea class="form-input" id="edit_pending_notes" placeholder="联系目的...">${visit.notes || ''}</textarea>
+                    `;
+                    
+                    footer.innerHTML = deleteFooter(`deleteVisit(${id})`);
+                    
+                    document.getElementById('modalSaveBtn').onclick = () => {
+                        const newDate = document.getElementById('edit_pending_date').value;
+                        const newNotes = document.getElementById('edit_pending_notes').value;
+                        
+                        if (!newDate) return alert('请选择联系日期');
+                        
+                        // 检查是否与其他待办冲突
+                        const conflict = data.visits.find(v => 
+                            v.id !== visit.id &&
+                            v.clientId === visit.clientId && 
+                            v.date === newDate && 
+                            v.status === 'pending'
+                        );
+                        
+                        if (conflict) {
+                            if (!confirm('该客户当天已有其他联系计划，确定要调整到这个日期吗？')) {
+                                return;
+                            }
+                        }
+                        
+                        visit.date = newDate;
+                        visit.notes = newNotes;
+                        
+                        saveData();
+                        closeModal();
+                        renderHome();
+                        renderCalendar();
+                    };
+                    
+                    overlay.classList.add('active');
+                    return;
+                }
+
+                // ========== 非 pending 状态：完整反馈编辑 ==========
                 const hasStop = visit.stopReason && visit.stopReason.trim();
                 const defaultContinue = !hasStop;
 
@@ -1394,7 +1445,6 @@
                             visit.stopReason = '';
                             
                             if (nextDate) {
-                                // 检查是否已存在相同的待办（防重复）
                                 const exists = data.visits.find(v => 
                                     v.clientId === visit.clientId && 
                                     v.date === nextDate && 
@@ -1436,6 +1486,9 @@
                     renderCalendar();
                     renderRecords();
                 };
+
+                overlay.classList.add('active');
+                return;
             }
             else if (type === 'history') {
                 const client = data.clients.find(c => c.id === id);
@@ -1473,7 +1526,7 @@
             overlay.classList.add('active');
         };
 
-        // ===== 首页反馈弹窗（修复版）=====
+        // ===== 首页反馈弹窗 =====
         window.openFeedbackModal = (visitId) => {
             // 重新获取 visit 对象，确保是最新数据
             const visit = data.visits.find(v => v.id === visitId);
@@ -1636,9 +1689,9 @@
                 renderRecords();
             };
 
-            // 保存按钮事件 - 关键修复：使用局部变量，避免闭包问题
+            // 保存按钮事件
             document.getElementById('modalSaveBtn').onclick = () => {
-                const currentVisitId = visitId; // 保存当前ID
+                const currentVisitId = visitId;
                 const currentVisit = data.visits.find(v => v.id === currentVisitId);
                 
                 if (!currentVisit) {
@@ -1685,10 +1738,10 @@
                             
                             if (!exists) {
                                 const newVisit = {
-                                    id: Date.now() + Math.floor(Math.random() * 1000), // 确保唯一ID
+                                    id: Date.now() + Math.floor(Math.random() * 1000),
                                     clientId: currentVisit.clientId,
                                     date: nextDate,
-                                    status: 'pending', // 明确设置为待办
+                                    status: 'pending',
                                     notes: `跟进: ${nextGoal || ''}`,
                                     detail: '',
                                     nextDate: '',
