@@ -257,8 +257,10 @@
             transition: background 0.2s;
         }
         
-        .calendar-day.active { background: var(--accent-soft); }
+        .calendar-day:hover { background: var(--card-hover); }
+        .calendar-day.selected { background: var(--accent-soft); border: 2px solid var(--accent); }
         .calendar-day.today { border: 1px solid var(--accent); }
+        .calendar-day.today.selected { border: 2px solid var(--accent); }
         
         .day-num { font-size: 12px; font-weight: 500; margin-bottom: 2px; }
         
@@ -544,6 +546,59 @@
             from { transform: translateY(100%); opacity: 0; }
             to { transform: translateY(0); opacity: 1; }
         }
+
+        /* 月视图选中日期列表样式 */
+        .month-selected-date {
+            margin-top: 20px;
+            padding-top: 16px;
+            border-top: 1px solid var(--border);
+        }
+        
+        .month-selected-header {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            margin-bottom: 12px;
+        }
+        
+        .month-selected-title {
+            font-size: 15px;
+            font-weight: 600;
+        }
+        
+        .month-selected-count {
+            font-size: 12px;
+            color: var(--text-muted);
+        }
+
+        .calendar-visit-item {
+            display: flex;
+            align-items: center;
+            padding: 12px 16px;
+            border-bottom: 1px solid var(--border);
+            cursor: pointer;
+            transition: background 0.2s;
+        }
+        
+        .calendar-visit-item:last-child {
+            border-bottom: none;
+        }
+        
+        .calendar-visit-item:active {
+            background: var(--card-hover);
+        }
+        
+        .calendar-visit-item.pending-today {
+            background: rgba(255, 167, 38, 0.05);
+        }
+        
+        .calendar-visit-item.pending-overdue {
+            background: rgba(255, 82, 82, 0.05);
+        }
+        
+        .calendar-visit-item.pending-future {
+            background: transparent;
+        }
     </style>
 </head>
 <body>
@@ -618,7 +673,7 @@
                     <div id="client-filter-bar" class="filter-bar"></div>
                     <div style="display: flex; gap: 10px;">
                         <input type="text" class="form-input" placeholder="搜索客户..." id="clientSearch" oninput="renderClients()" style="margin-bottom: 0; flex: 1;">
-                        <button class="btn btn-primary" onclick="openModal('client')" style="width: auto; padding: 0 16px; white-space: nowrap;">新增</button>
+                        <button class="btn btn-primary" onclick="openModal('visit')" style="width: auto; padding: 0 16px; white-space: nowrap;">新增</button>
                     </div>
                     <div class="action-row">
                         <button class="btn btn-secondary btn-small" onclick="exportClients()">
@@ -645,6 +700,15 @@
                         <button class="btn btn-secondary btn-small" onclick="changeMonth(1)">></button>
                     </div>
                     <div class="calendar-grid" id="calendarGrid"></div>
+                    
+                    <!-- 选中日期联系计划列表 -->
+                    <div class="month-selected-date" id="monthSelectedList" style="display: none;">
+                        <div class="month-selected-header">
+                            <span class="month-selected-title" id="monthSelectedTitle">选中日期</span>
+                            <span class="month-selected-count" id="monthSelectedCount">0 个计划</span>
+                        </div>
+                        <div class="card" style="padding: 0;" id="monthSelectedContent"></div>
+                    </div>
                 </div>
 
                 <div id="cal-container-week" style="display:none;">
@@ -748,6 +812,7 @@
         let activeClientFilter = 'all';
         let activeRecordFilter = 'all';
         let homeFilterOverdue = false;
+        let selectedMonthDate = null; // 月视图选中的日期
 
         // ===== 全局关闭模态框函数（确保唯一） =====
         window.closeModal = () => {
@@ -987,12 +1052,18 @@
             }
 
             const today = getTodayStr();
+            // 如果没有选中日期，默认选中今天
+            if (!selectedMonthDate) {
+                selectedMonthDate = today;
+            }
+
             for (let d = 1; d <= daysInMonth; d++) {
                 const dateStr = `${y}-${String(m+1).padStart(2,'0')}-${String(d).padStart(2,'0')}`;
                 const visits = data.visits.filter(v => v.date === dateStr);
                 const isToday = dateStr === today;
+                const isSelected = dateStr === selectedMonthDate;
                 html += `
-                    <div class="calendar-day ${isToday ? 'today' : ''}" onclick="handleDayClick('${dateStr}')">
+                    <div class="calendar-day ${isToday ? 'today' : ''} ${isSelected ? 'selected' : ''}" onclick="selectMonthDate('${dateStr}')">
                         <div class="day-num" style="${isToday ? 'color:var(--accent); font-weight:700' : ''}">${d}</div>
                         <div style="display:flex; gap:2px; justify-content:center; flex-wrap:wrap;">
                             ${visits.slice(0,3).map(v => {
@@ -1004,6 +1075,94 @@
                 `;
             }
             document.getElementById('calendarGrid').innerHTML = html;
+
+            // 渲染选中日期的联系计划列表
+            renderMonthSelectedList();
+        };
+
+        // 月视图选中日期
+        window.selectMonthDate = (dateStr) => {
+            selectedMonthDate = dateStr;
+            renderMonthView(); // 重新渲染以更新选中状态
+        };
+
+        // 渲染月视图选中日期的联系计划列表
+        const renderMonthSelectedList = () => {
+            const container = document.getElementById('monthSelectedList');
+            const titleEl = document.getElementById('monthSelectedTitle');
+            const countEl = document.getElementById('monthSelectedCount');
+            const contentEl = document.getElementById('monthSelectedContent');
+
+            if (!selectedMonthDate) {
+                container.style.display = 'none';
+                return;
+            }
+
+            const today = getTodayStr();
+            const visits = data.visits.filter(v => v.date === selectedMonthDate).sort((a, b) => {
+                // 待联系排在前面，按状态排序
+                const statusOrder = { pending: 0, done: 1, missed: 2, reschedule: 3 };
+                return (statusOrder[a.status] || 0) - (statusOrder[b.status] || 0);
+            });
+
+            // 格式化日期显示
+            const dateObj = new Date(selectedMonthDate.replace(/-/g, '/'));
+            const dateDisplay = selectedMonthDate === today ? '今天' : 
+                `${dateObj.getMonth() + 1}月${dateObj.getDate()}日`;
+
+            titleEl.innerText = dateDisplay;
+            countEl.innerText = `${visits.length} 个计划`;
+
+            if (visits.length === 0) {
+                contentEl.innerHTML = '<div class="empty-state" style="padding: 24px;">暂无联系计划</div>';
+            } else {
+                contentEl.innerHTML = visits.map(v => {
+                    const c = data.clients.find(x => x.id === v.clientId);
+                    const statusMap = { 
+                        pending: ['tag-pending', '待联系'], 
+                        done: ['tag-done', '已联系'], 
+                        missed: ['tag-missed', '未联系'], 
+                        reschedule: ['tag-reschedule', '已改期'] 
+                    };
+                    const statusKey = v.status || 'pending';
+                    const [cls, text] = statusMap[statusKey] || statusMap.pending;
+                    const icons = { phone: '📞', wechat: '💬', visit: '🏠', '': '' };
+
+                    // 判断点击行为：当天及之前的待联系记录进入反馈界面，其他进入编辑界面
+                    const isPending = v.status === 'pending';
+                    const isTodayOrBefore = selectedMonthDate <= today;
+                    const clickAction = (isPending && isTodayOrBefore) 
+                        ? `openFeedbackModal(${v.id})` 
+                        : `openModal('visit_edit', ${v.id})`;
+
+                    // 根据状态和时间设置样式
+                    let itemClass = 'calendar-visit-item';
+                    if (isPending) {
+                        if (selectedMonthDate === today) {
+                            itemClass += ' pending-today';
+                        } else if (selectedMonthDate < today) {
+                            itemClass += ' pending-overdue';
+                        } else {
+                            itemClass += ' pending-future';
+                        }
+                    }
+
+                    return `
+                        <div class="${itemClass}" onclick="${clickAction}">
+                            <div style="flex:1">
+                                <div style="display:flex; align-items:center; gap:8px;">
+                                    <span style="font-weight:500">${c?.name || '未知'}</span>
+                                    <span class="tag ${cls}">${text}</span>
+                                </div>
+                                <div style="font-size:12px; color:var(--text-muted); margin-top:4px;">${v.notes || '无备注'}</div>
+                            </div>
+                            ${v.contactType ? `<span style="font-size:14px; margin-left:8px;">${icons[v.contactType]}</span>` : ''}
+                        </div>
+                    `;
+                }).join('');
+            }
+
+            container.style.display = 'block';
         };
 
         const renderWeekView = () => {
@@ -1017,6 +1176,8 @@
             end.setDate(end.getDate() + 6);
             document.getElementById('calTitleWeek').innerText = `${start.getMonth()+1}/${start.getDate()} - ${end.getMonth()+1}/${end.getDate()}`;
 
+            const today = getTodayStr();
+
             let html = '';
             for (let i = 0; i < 7; i++) {
                 const d = new Date(start);
@@ -1026,11 +1187,11 @@
                 html += `
                     <div class="card" style="margin-bottom: 8px;">
                         <div style="display: flex; align-items: center; padding: 12px 16px; ${visits.length > 0 ? 'border-bottom:1px solid var(--border)' : ''}">
-                            <div style="font-weight: 600; width: 40px; color: ${dateStr === getTodayStr() ? 'var(--accent)' : 'inherit'}">${['日','一','二','三','四','五','六'][d.getDay()]}</div>
+                            <div style="font-weight: 600; width: 40px; color: ${dateStr === today ? 'var(--accent)' : 'inherit'}">${['日','一','二','三','四','五','六'][d.getDay()]}</div>
                             <div style="color: var(--text-muted); font-size: 13px;">${d.getDate()}日</div>
                             <button class="btn btn-small btn-secondary" style="margin-left:auto; padding: 4px 8px; font-size: 11px;" onclick="openModal('visit', null, '${dateStr}')">+</button>
                         </div>
-                        <div>${visits.map(v => renderVisitItem(v)).join('')}</div>
+                        <div>${visits.map(v => renderVisitItem(v, dateStr)).join('')}</div>
                     </div>
                 `;
             }
@@ -1046,10 +1207,11 @@
             document.getElementById('calTitleDay').innerText = `${currentDay.getMonth()+1}月${currentDay.getDate()}日`;
 
             const visits = data.visits.filter(v => v.date === dateStr);
-            document.getElementById('dayList').innerHTML = visits.length === 0 ? '<div class="empty-state">暂无安排</div>' : `<div class="card">${visits.map(v => renderVisitItem(v)).join('')}</div>`;
+            document.getElementById('dayList').innerHTML = visits.length === 0 ? '<div class="empty-state">暂无安排</div>' : `<div class="card">${visits.map(v => renderVisitItem(v, dateStr)).join('')}</div>`;
         };
 
-        const renderVisitItem = (v) => {
+        // 通用渲染联系计划项（用于周视图和日视图）
+        const renderVisitItem = (v, dateStr) => {
             const c = data.clients.find(x => x.id === v.clientId);
             const statusMap = { 
                 pending: ['tag-pending', '待联系'], 
@@ -1060,8 +1222,17 @@
             const statusKey = v.status || 'pending';
             const [cls, text] = statusMap[statusKey] || statusMap.pending;
             const icons = { phone: '📞', wechat: '💬', visit: '🏠', '': '' };
+
+            // 判断点击行为：当天及之前的待联系记录进入反馈界面，其他进入编辑界面
+            const today = getTodayStr();
+            const isPending = v.status === 'pending';
+            const isTodayOrBefore = dateStr <= today;
+            const clickAction = (isPending && isTodayOrBefore) 
+                ? `openFeedbackModal(${v.id})` 
+                : `openModal('visit_edit', ${v.id})`;
+
             return `
-                <div style="display: flex; align-items: center; padding: 12px 16px; border-bottom: 1px solid var(--border); cursor: pointer;" onclick="openModal('visit_edit', ${v.id})">
+                <div style="display: flex; align-items: center; padding: 12px 16px; border-bottom: 1px solid var(--border); cursor: pointer;" onclick="${clickAction}">
                     <div style="flex:1">
                         <div style="font-weight: 500">${c?.name || '未知'}</div>
                         <div style="font-size: 12px; color: var(--text-muted)">${v.notes || '无备注'}</div>
@@ -1082,10 +1253,18 @@
 
         window.switchCalendarMode = (mode) => {
             calendarMode = mode;
+            // 切换模式时重置选中日期
+            if (mode === 'month') {
+                selectedMonthDate = getTodayStr();
+            }
             renderCalendar();
         };
 
-        window.changeMonth = (d) => { currentMonth.setMonth(currentMonth.getMonth() + d); renderMonthView(); };
+        window.changeMonth = (d) => { 
+            currentMonth.setMonth(currentMonth.getMonth() + d); 
+            selectedMonthDate = null; // 切换月份时重置选中
+            renderMonthView(); 
+        };
         window.changeWeek = (d) => { currentWeek.setDate(currentWeek.getDate() + 7 * d); renderWeekView(); };
         window.changeDay = (d) => { currentDay.setDate(currentDay.getDate() + d); renderDayView(); };
         window.getSelectedDayStr = () => formatObjToStr(currentDay);
@@ -1138,7 +1317,11 @@
 
             if (viewId === 'home') { homeFilterOverdue = false; renderHome(); }
             if (viewId === 'clients') renderClients();
-            if (viewId === 'calendar') renderCalendar();
+            if (viewId === 'calendar') { 
+                // 进入日历视图时默认选中今天
+                selectedMonthDate = getTodayStr();
+                renderCalendar(); 
+            }
             if (viewId === 'records') renderRecords();
 
             const titles = { home: '工作台', clients: '客户管理', calendar: '联系日历', records: '联系记录' };
