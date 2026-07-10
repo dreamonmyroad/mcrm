@@ -8,14 +8,8 @@
     <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
     <title>客户联系管理 Pro</title>
     
-    <!-- PWA Manifest -->
-    <link rel="manifest" href="manifest.json">
-    
-    <!-- iOS Icons -->
-    <link rel="apple-touch-icon" href="icons/icon-192x192.png">
-    <link rel="apple-touch-icon" sizes="152x152" href="icons/icon-152x152.png">
-    <link rel="apple-touch-icon" sizes="180x180" href="icons/icon-180x180.png">
-    <link rel="apple-touch-icon" sizes="167x167" href="icons/icon-167x167.png">
+    <!-- PWA Manifest - 内联方式避免外部文件依赖 -->
+    <link rel="manifest" id="manifestLink">
 
     <script src="https://cdn.tailwindcss.com"></script>
     <link href="https://fonts.googleapis.com/css2?family=Space+Grotesk:wght@400;500;600;700&family=IBM+Plex+Sans:wght@300;400;500;600&display=swap" rel="stylesheet">
@@ -547,7 +541,6 @@
             to { transform: translateY(0); opacity: 1; }
         }
 
-        /* 月视图选中日期列表样式 */
         .month-selected-date {
             margin-top: 20px;
             padding-top: 16px;
@@ -599,10 +592,61 @@
         .calendar-visit-item.pending-future {
             background: transparent;
         }
+
+        /* 离线状态指示器 */
+        .offline-indicator {
+            position: fixed;
+            top: 0;
+            left: 0;
+            right: 0;
+            background: var(--warning);
+            color: #000;
+            text-align: center;
+            padding: 6px;
+            font-size: 12px;
+            font-weight: 600;
+            z-index: 1000;
+            transform: translateY(-100%);
+            transition: transform 0.3s;
+        }
+        
+        .offline-indicator.show {
+            transform: translateY(0);
+        }
+
+        /* Service Worker 更新提示 */
+        .sw-update-toast {
+            position: fixed;
+            bottom: 100px;
+            left: 16px;
+            right: 16px;
+            background: var(--accent);
+            color: #0c1015;
+            border-radius: 12px;
+            padding: 16px;
+            z-index: 301;
+            display: none;
+            animation: slideUp 0.3s ease;
+        }
+        
+        .sw-update-toast.show { display: block; }
     </style>
 </head>
 <body>
     <div class="bg-pattern"></div>
+    
+    <!-- 离线状态指示器 -->
+    <div class="offline-indicator" id="offlineIndicator">
+        <span>⚠️ 离线模式 - 数据将保存在本地</span>
+    </div>
+
+    <!-- Service Worker 更新提示 -->
+    <div class="sw-update-toast" id="swUpdateToast">
+        <div style="display: flex; align-items: center; justify-content: space-between;">
+            <span style="font-weight: 600;">发现新版本</span>
+            <button class="btn btn-small" style="background: #0c1015; color: var(--accent); width: auto;" onclick="updateApp()">立即更新</button>
+        </div>
+    </div>
     
     <div class="app-shell">
         <header class="app-header">
@@ -673,7 +717,6 @@
                     <div id="client-filter-bar" class="filter-bar"></div>
                     <div style="display: flex; gap: 10px;">
                         <input type="text" class="form-input" placeholder="搜索客户..." id="clientSearch" oninput="renderClients()" style="margin-bottom: 0; flex: 1;">
-                        <!-- 修复：客户列表页新增按钮改为新增客户 -->
                         <button class="btn btn-primary" onclick="openModal('client')" style="width: auto; padding: 0 16px; white-space: nowrap;">新增</button>
                     </div>
                     <div class="action-row">
@@ -702,7 +745,6 @@
                     </div>
                     <div class="calendar-grid" id="calendarGrid"></div>
                     
-                    <!-- 选中日期联系计划列表 -->
                     <div class="month-selected-date" id="monthSelectedList" style="display: none;">
                         <div class="month-selected-header">
                             <span class="month-selected-title" id="monthSelectedTitle">选中日期</span>
@@ -813,9 +855,157 @@
         let activeClientFilter = 'all';
         let activeRecordFilter = 'all';
         let homeFilterOverdue = false;
-        let selectedMonthDate = null; // 月视图选中的日期
+        let selectedMonthDate = null;
 
-        // ===== 全局关闭模态框函数（确保唯一） =====
+        // ===== Service Worker 注册（支持离线）=====
+        const registerServiceWorker = () => {
+            if (!('serviceWorker' in navigator)) {
+                console.log('Service Worker 不支持');
+                return;
+            }
+
+            // 创建内联 Service Worker
+            const swContent = `
+                const CACHE_NAME = 'crm-app-v1';
+                const STATIC_ASSETS = [
+                    '/',
+                    'index.html'
+                ];
+
+                // 安装：缓存静态资源
+                self.addEventListener('install', (event) => {
+                    console.log('[SW] Installing...');
+                    event.waitUntil(
+                        caches.open(CACHE_NAME).then((cache) => {
+                            console.log('[SW] Caching static assets');
+                            return cache.addAll(STATIC_ASSETS);
+                        }).catch(err => {
+                            console.log('[SW] Cache failed:', err);
+                        })
+                    );
+                    self.skipWaiting();
+                });
+
+                // 激活：清理旧缓存
+                self.addEventListener('activate', (event) => {
+                    console.log('[SW] Activating...');
+                    event.waitUntil(
+                        caches.keys().then((cacheNames) => {
+                            return Promise.all(
+                                cacheNames.map((cacheName) => {
+                                    if (cacheName !== CACHE_NAME) {
+                                        console.log('[SW] Deleting old cache:', cacheName);
+                                        return caches.delete(cacheName);
+                                    }
+                                })
+                            );
+                        })
+                    );
+                    self.clients.claim();
+                });
+
+                // 拦截请求：优先网络，离线使用缓存
+                self.addEventListener('fetch', (event) => {
+                    const { request } = event;
+                    
+                    // 只处理 GET 请求
+                    if (request.method !== 'GET') return;
+
+                    // 跳过 chrome-extension 和其他非 http 请求
+                    if (!request.url.startsWith('http')) return;
+
+                    event.respondWith(
+                        fetch(request)
+                            .then((response) => {
+                                // 网络成功，更新缓存
+                                if (response && response.status === 200) {
+                                    const responseClone = response.clone();
+                                    caches.open(CACHE_NAME).then((cache) => {
+                                        cache.put(request, responseClone);
+                                    });
+                                }
+                                return response;
+                            })
+                            .catch(() => {
+                                // 网络失败，使用缓存
+                                console.log('[SW] Serving from cache:', request.url);
+                                return caches.match(request).then((cached) => {
+                                    if (cached) return cached;
+                                    // 缓存也没有，返回离线页面
+                                    return new Response(
+                                        '<h1>离线模式</h1><p>请连接网络后刷新</p>',
+                                        { status: 503, headers: { 'Content-Type': 'text/html' } }
+                                    );
+                                });
+                            })
+                    );
+                });
+
+                // 后台同步（用于离线数据同步）
+                self.addEventListener('sync', (event) => {
+                    if (event.tag === 'sync-data') {
+                        console.log('[SW] Background sync triggered');
+                    }
+                });
+            `;
+
+            // 将 SW 代码转换为 Blob URL
+            const swBlob = new Blob([swContent], { type: 'application/javascript' });
+            const swUrl = URL.createObjectURL(swBlob);
+
+            navigator.serviceWorker.register(swUrl)
+                .then((registration) => {
+                    console.log('[SW] Registered:', registration.scope);
+                    
+                    // 监听更新
+                    registration.addEventListener('updatefound', () => {
+                        const newWorker = registration.installing;
+                        newWorker.addEventListener('statechange', () => {
+                            if (newWorker.state === 'installed' && navigator.serviceWorker.controller) {
+                                // 有新版本
+                                showUpdateToast();
+                            }
+                        });
+                    });
+                })
+                .catch((error) => {
+                    console.log('[SW] Registration failed:', error);
+                });
+
+            // 监听离线/在线状态
+            window.addEventListener('online', () => {
+                document.getElementById('offlineIndicator').classList.remove('show');
+                console.log('App is online');
+            });
+
+            window.addEventListener('offline', () => {
+                document.getElementById('offlineIndicator').classList.add('show');
+                console.log('App is offline');
+            });
+
+            // 初始状态检查
+            if (!navigator.onLine) {
+                document.getElementById('offlineIndicator').classList.add('show');
+            }
+        };
+
+        // 显示更新提示
+        const showUpdateToast = () => {
+            document.getElementById('swUpdateToast').classList.add('show');
+        };
+
+        // 更新应用
+        window.updateApp = () => {
+            if ('serviceWorker' in navigator) {
+                navigator.serviceWorker.ready.then((registration) => {
+                    registration.update().then(() => {
+                        window.location.reload();
+                    });
+                });
+            }
+        };
+
+        // ===== 全局关闭模态框函数 =====
         window.closeModal = () => {
             document.getElementById('modalOverlay').classList.remove('active');
         };
@@ -825,7 +1015,6 @@
                 const stored = localStorage.getItem('crm_app_data_v4');
                 if (stored) {
                     data = JSON.parse(stored);
-                    // 数据迁移：确保所有记录都有 status 字段
                     data.visits.forEach(v => {
                         if (!v.contactType) v.contactType = '';
                         if (!v.status) v.status = 'pending';
@@ -1053,7 +1242,6 @@
             }
 
             const today = getTodayStr();
-            // 如果没有选中日期，默认选中今天
             if (!selectedMonthDate) {
                 selectedMonthDate = today;
             }
@@ -1077,17 +1265,14 @@
             }
             document.getElementById('calendarGrid').innerHTML = html;
 
-            // 渲染选中日期的联系计划列表
             renderMonthSelectedList();
         };
 
-        // 月视图选中日期
         window.selectMonthDate = (dateStr) => {
             selectedMonthDate = dateStr;
-            renderMonthView(); // 重新渲染以更新选中状态
+            renderMonthView();
         };
 
-        // 渲染月视图选中日期的联系计划列表
         const renderMonthSelectedList = () => {
             const container = document.getElementById('monthSelectedList');
             const titleEl = document.getElementById('monthSelectedTitle');
@@ -1101,12 +1286,10 @@
 
             const today = getTodayStr();
             const visits = data.visits.filter(v => v.date === selectedMonthDate).sort((a, b) => {
-                // 待联系排在前面，按状态排序
                 const statusOrder = { pending: 0, done: 1, missed: 2, reschedule: 3 };
                 return (statusOrder[a.status] || 0) - (statusOrder[b.status] || 0);
             });
 
-            // 格式化日期显示
             const dateObj = new Date(selectedMonthDate.replace(/-/g, '/'));
             const dateDisplay = selectedMonthDate === today ? '今天' : 
                 `${dateObj.getMonth() + 1}月${dateObj.getDate()}日`;
@@ -1129,14 +1312,12 @@
                     const [cls, text] = statusMap[statusKey] || statusMap.pending;
                     const icons = { phone: '📞', wechat: '💬', visit: '🏠', '': '' };
 
-                    // 判断点击行为：当天及之前的待联系记录进入反馈界面，其他进入编辑界面
                     const isPending = v.status === 'pending';
                     const isTodayOrBefore = selectedMonthDate <= today;
                     const clickAction = (isPending && isTodayOrBefore) 
                         ? `openFeedbackModal(${v.id})` 
                         : `openModal('visit_edit', ${v.id})`;
 
-                    // 根据状态和时间设置样式
                     let itemClass = 'calendar-visit-item';
                     if (isPending) {
                         if (selectedMonthDate === today) {
@@ -1211,7 +1392,6 @@
             document.getElementById('dayList').innerHTML = visits.length === 0 ? '<div class="empty-state">暂无安排</div>' : `<div class="card">${visits.map(v => renderVisitItem(v, dateStr)).join('')}</div>`;
         };
 
-        // 通用渲染联系计划项（用于周视图和日视图）
         const renderVisitItem = (v, dateStr) => {
             const c = data.clients.find(x => x.id === v.clientId);
             const statusMap = { 
@@ -1224,7 +1404,6 @@
             const [cls, text] = statusMap[statusKey] || statusMap.pending;
             const icons = { phone: '📞', wechat: '💬', visit: '🏠', '': '' };
 
-            // 判断点击行为：当天及之前的待联系记录进入反馈界面，其他进入编辑界面
             const today = getTodayStr();
             const isPending = v.status === 'pending';
             const isTodayOrBefore = dateStr <= today;
@@ -1254,7 +1433,6 @@
 
         window.switchCalendarMode = (mode) => {
             calendarMode = mode;
-            // 切换模式时重置选中日期
             if (mode === 'month') {
                 selectedMonthDate = getTodayStr();
             }
@@ -1263,7 +1441,7 @@
 
         window.changeMonth = (d) => { 
             currentMonth.setMonth(currentMonth.getMonth() + d); 
-            selectedMonthDate = null; // 切换月份时重置选中
+            selectedMonthDate = null;
             renderMonthView(); 
         };
         window.changeWeek = (d) => { currentWeek.setDate(currentWeek.getDate() + 7 * d); renderWeekView(); };
@@ -1319,7 +1497,6 @@
             if (viewId === 'home') { homeFilterOverdue = false; renderHome(); }
             if (viewId === 'clients') renderClients();
             if (viewId === 'calendar') { 
-                // 进入日历视图时默认选中今天
                 selectedMonthDate = getTodayStr();
                 renderCalendar(); 
             }
@@ -1336,13 +1513,11 @@
             const header = document.getElementById('modalHeader');
             const footer = document.getElementById('modalFooter');
 
-            // 标准底部按钮（取消+保存）
             const standardFooter = `
                 <button class="btn btn-secondary" onclick="closeModal()">取消</button>
                 <button class="btn btn-primary" id="modalSaveBtn">保存</button>
             `;
 
-            // 带删除的底部按钮（删除+取消+保存）
             const deleteFooter = (deleteFn) => `
                 <button class="btn btn-danger" onclick="${deleteFn}">删除</button>
                 <button class="btn btn-secondary" onclick="closeModal()" style="flex:1;">取消</button>
@@ -1443,7 +1618,6 @@
                 const client = data.clients.find(c => c.id === visit.clientId);
                 header.innerText = '联系详情';
 
-                // ========== pending 状态：简单编辑（可调整时间） ==========
                 if (visit.status === 'pending') {
                     body.innerHTML = `
                         <div style="margin-bottom:16px; padding:12px; background:var(--bg); border-radius:12px;">
@@ -1466,7 +1640,6 @@
                         
                         if (!newDate) return alert('请选择联系日期');
                         
-                        // 检查是否与其他待办冲突
                         const conflict = data.visits.find(v => 
                             v.id !== visit.id &&
                             v.clientId === visit.clientId && 
@@ -1493,7 +1666,6 @@
                     return;
                 }
 
-                // ========== 非 pending 状态：完整反馈编辑 ==========
                 const hasStop = visit.stopReason && visit.stopReason.trim();
                 const defaultContinue = !hasStop;
 
@@ -1535,7 +1707,6 @@
                         <textarea class="form-input" id="edit_detail" style="margin-top:8px; margin-bottom:0;" placeholder="${visit.status === 'missed' ? '请填写未联系原因' : '记录详情...'}">${visit.detail || ''}</textarea>
                     </div>
 
-                    <!-- 改期字段：放在改期原因下方 -->
                     <div id="edit_reschedule_field" style="margin-top:16px; display:${visit.status === 'reschedule' ? 'block' : 'none'};">
                         <label style="font-size:12px; color:var(--text-muted);">改期至 <span class="required-star">*</span></label>
                         <input type="date" class="form-input" id="edit_reschedule_date" value="${visit.date}" style="margin-bottom:0;">
@@ -1716,7 +1887,6 @@
 
         // ===== 首页反馈弹窗 =====
         window.openFeedbackModal = (visitId) => {
-            // 重新获取 visit 对象，确保是最新数据
             const visit = data.visits.find(v => v.id === visitId);
             if (!visit) {
                 console.error('Visit not found:', visitId);
@@ -1731,11 +1901,9 @@
 
             header.innerText = `反馈 - ${client?.name || '未知'}`;
             
-            // 判断默认跟进状态：如果有 stopReason 则默认停止，否则继续
             const hasStopReason = visit.stopReason && visit.stopReason.trim();
             const defaultToContinue = !hasStopReason;
 
-            // 注意：改期字段现在放在改期原因下方
             body.innerHTML = `
                 <div style="margin-bottom:16px; padding:12px; background:var(--bg); border-radius:12px;">
                     <div style="font-size:12px; color:var(--text-muted); margin-bottom:4px;">计划时间: ${visit.date}</div>
@@ -1774,7 +1942,6 @@
                     <textarea class="form-input" id="fb_detail" style="margin-top:8px; margin-bottom:16px;" placeholder="记录本次联系成果...">${visit.detail || ''}</textarea>
                 </div>
 
-                <!-- 改期至：放在改期原因下方 -->
                 <div id="fb_reschedule_field" style="display:none; margin-bottom:16px;">
                     <label style="font-size:12px; color:var(--text-muted);">改期至 <span class="required-star">*</span></label>
                     <input type="date" class="form-input" id="fb_reschedule_date" value="${visit.date}" style="margin-bottom:0;">
@@ -1798,14 +1965,12 @@
                 </div>
             `;
 
-            // 设置底部按钮：删除 + 取消 + 保存
             footer.innerHTML = `
                 <button class="btn btn-danger" onclick="deleteVisitFromFeedback(${visit.id})">删除</button>
                 <button class="btn btn-secondary" onclick="closeModal()" style="flex:1;">取消</button>
                 <button class="btn btn-primary" id="modalSaveBtn" style="flex:1;">保存</button>
             `;
 
-            // 状态切换函数
             window.setFbStatus = (s) => {
                 document.getElementById('fb_status').value = s;
                 document.querySelectorAll('.status-option').forEach(el => {
@@ -1837,14 +2002,12 @@
                 }
             };
 
-            // 联系方式切换
             window.setFbContactType = (t) => {
                 document.getElementById('fb_contact_type').value = t;
                 document.querySelectorAll('.contact-type-option').forEach(el => el.classList.remove('active'));
                 document.getElementById(`fb_ct_${t}`)?.classList.add('active');
             };
 
-            // 跟进/停止切换
             window.toggleFbFollowUp = (t) => {
                 const bc = document.getElementById('fb_btn_continue');
                 const bs = document.getElementById('fb_btn_stop');
@@ -1864,11 +2027,9 @@
                 }
             };
 
-            // 初始化联系方式显示
             const savedContactType = visit.contactType || 'phone';
             setFbContactType(savedContactType);
 
-            // 删除函数
             window.deleteVisitFromFeedback = (id) => {
                 if (!confirm('确定要删除这条联系计划吗？')) return;
                 data.visits = data.visits.filter(v => v.id !== id);
@@ -1879,7 +2040,6 @@
                 renderRecords();
             };
 
-            // 保存按钮事件
             document.getElementById('modalSaveBtn').onclick = () => {
                 const currentVisitId = visitId;
                 const currentVisit = data.visits.find(v => v.id === currentVisitId);
@@ -1893,22 +2053,18 @@
                 const status = document.getElementById('fb_status').value;
                 const detail = document.getElementById('fb_detail').value;
                 
-                // 验证
                 if (status === 'missed' && !detail.trim()) {
                     return alert('请填写未联系原因');
                 }
 
-                // 更新当前记录
                 currentVisit.status = status;
                 currentVisit.detail = detail;
                 currentVisit.contactType = status === 'done' ? document.getElementById('fb_contact_type').value : '';
 
-                // 处理后续安排
                 if (status === 'done') {
                     const isContinue = document.getElementById('fb_btn_continue')?.classList.contains('active');
                     
                     if (isContinue) {
-                        // 继续跟进：设置当前记录的下次信息
                         const nextDate = document.getElementById('fb_next_date')?.value || '';
                         const nextGoal = document.getElementById('fb_next_goal')?.value || '';
                         
@@ -1916,9 +2072,7 @@
                         currentVisit.nextGoal = nextGoal;
                         currentVisit.stopReason = '';
                         
-                        // 创建新的待办记录
                         if (nextDate) {
-                            // 检查是否已存在相同的待办（防重复）
                             const exists = data.visits.find(v => 
                                 v.clientId === currentVisit.clientId && 
                                 v.date === nextDate && 
@@ -1944,7 +2098,6 @@
                             }
                         }
                     } else {
-                        // 停止跟进
                         const stopReason = document.getElementById('fb_stop_reason')?.value || '';
                         if (!stopReason.trim()) {
                             return alert('请填写不再跟进的原因');
@@ -1954,23 +2107,19 @@
                         currentVisit.nextGoal = '';
                     }
                 } else if (status === 'reschedule') {
-                    // 改期
                     const newDate = document.getElementById('fb_reschedule_date')?.value;
                     if (!newDate) {
                         return alert('请选择改期日期');
                     }
                     if (newDate) {
                         currentVisit.date = newDate;
-                        // 改期后保持待办状态
                         currentVisit.status = 'pending';
                     }
                 }
 
-                // 保存并刷新
                 saveData();
                 closeModal();
                 
-                // 延迟刷新确保数据同步
                 setTimeout(() => {
                     renderHome();
                     renderCalendar();
@@ -2024,13 +2173,7 @@
             renderClients();
         };
 
-        // ===== PWA 功能 =====
-        if ('serviceWorker' in navigator) {
-            navigator.serviceWorker.register('data:text/javascript,').catch(() => {
-                console.log('SW registration skipped');
-            });
-        }
-
+        // ===== PWA 安装功能 =====
         let deferredPrompt;
         const installToast = document.getElementById('pwaInstallToast');
         
@@ -2064,6 +2207,7 @@
 
         // 启动应用
         loadData();
+        registerServiceWorker();
         navigate('calendar');
     </script>
 </body>
