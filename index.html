@@ -8,13 +8,20 @@
     <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
     <title>客户联系管理 Pro</title>
     
-    <!-- PWA Manifest - 内联方式避免外部文件依赖 -->
-    <link rel="manifest" id="manifestLink">
-
-    <script src="https://cdn.tailwindcss.com"></script>
-    <link href="https://fonts.googleapis.com/css2?family=Space+Grotesk:wght@400;500;600;700&family=IBM+Plex+Sans:wght@300;400;500;600&display=swap" rel="stylesheet">
-    
+    <!-- 完全内联，零外部依赖 -->
     <style>
+        /* 字体内联 - 不依赖 Google Fonts */
+        @font-face {
+            font-family: 'Space Grotesk';
+            src: local('Space Grotesk'), local('PingFang SC'), local('Microsoft YaHei');
+            font-weight: 400 700;
+        }
+        @font-face {
+            font-family: 'IBM Plex Sans';
+            src: local('IBM Plex Sans'), local('PingFang SC'), local('Microsoft YaHei');
+            font-weight: 300 600;
+        }
+
         :root {
             --bg: #0c1015;
             --bg-secondary: #131920;
@@ -38,7 +45,7 @@
         * { margin: 0; padding: 0; box-sizing: border-box; -webkit-tap-highlight-color: transparent; }
 
         body {
-            font-family: 'IBM Plex Sans', sans-serif;
+            font-family: 'IBM Plex Sans', 'PingFang SC', 'Microsoft YaHei', sans-serif;
             background: var(--bg);
             color: var(--text);
             min-height: 100vh;
@@ -50,7 +57,7 @@
         }
 
         html { height: -webkit-fill-available; }
-        h1, h2, h3, h4, h5, h6 { font-family: 'Space Grotesk', sans-serif; }
+        h1, h2, h3, h4, h5, h6 { font-family: 'Space Grotesk', 'PingFang SC', 'Microsoft YaHei', sans-serif; }
         ::-webkit-scrollbar { width: 0; height: 0; background: transparent; }
 
         .bg-pattern {
@@ -156,6 +163,8 @@
             cursor: pointer;
             transition: transform 0.1s, background 0.2s;
             width: 100%;
+            background: var(--card-hover);
+            color: var(--text);
         }
         
         .btn:active { transform: scale(0.98); }
@@ -354,14 +363,6 @@
             text-align: center;
             padding: 40px 20px;
             color: var(--text-muted);
-        }
-        
-        .status-group {
-            margin-top: 16px;
-            padding: 16px;
-            background: var(--bg);
-            border-radius: 12px;
-            border: 1px solid var(--border);
         }
         
         .status-options {
@@ -573,25 +574,11 @@
             transition: background 0.2s;
         }
         
-        .calendar-visit-item:last-child {
-            border-bottom: none;
-        }
-        
-        .calendar-visit-item:active {
-            background: var(--card-hover);
-        }
-        
-        .calendar-visit-item.pending-today {
-            background: rgba(255, 167, 38, 0.05);
-        }
-        
-        .calendar-visit-item.pending-overdue {
-            background: rgba(255, 82, 82, 0.05);
-        }
-        
-        .calendar-visit-item.pending-future {
-            background: transparent;
-        }
+        .calendar-visit-item:last-child { border-bottom: none; }
+        .calendar-visit-item:active { background: var(--card-hover); }
+        .calendar-visit-item.pending-today { background: rgba(255, 167, 38, 0.05); }
+        .calendar-visit-item.pending-overdue { background: rgba(255, 82, 82, 0.05); }
+        .calendar-visit-item.pending-future { background: transparent; }
 
         /* 离线状态指示器 */
         .offline-indicator {
@@ -610,26 +597,45 @@
             transition: transform 0.3s;
         }
         
-        .offline-indicator.show {
-            transform: translateY(0);
-        }
+        .offline-indicator.show { transform: translateY(0); }
 
-        /* Service Worker 更新提示 */
-        .sw-update-toast {
+        /* 纯离线模式指示 */
+        .pure-offline-badge {
             position: fixed;
-            bottom: 100px;
-            left: 16px;
-            right: 16px;
+            top: 60px;
+            right: 12px;
             background: var(--accent);
             color: #0c1015;
+            padding: 4px 10px;
             border-radius: 12px;
-            padding: 16px;
-            z-index: 301;
-            display: none;
-            animation: slideUp 0.3s ease;
+            font-size: 11px;
+            font-weight: 600;
+            z-index: 99;
+            opacity: 0;
+            transition: opacity 0.3s;
         }
         
-        .sw-update-toast.show { display: block; }
+        .pure-offline-badge.show { opacity: 1; }
+
+        /* 数据持久化提示 */
+        .data-status {
+            position: fixed;
+            bottom: 70px;
+            left: 50%;
+            transform: translateX(-50%);
+            background: var(--card);
+            border: 1px solid var(--border);
+            padding: 6px 14px;
+            border-radius: 16px;
+            font-size: 11px;
+            color: var(--text-muted);
+            z-index: 50;
+            opacity: 0;
+            transition: opacity 0.3s;
+        }
+        
+        .data-status.show { opacity: 1; }
+        .data-status.saved { border-color: var(--accent); color: var(--accent); }
     </style>
 </head>
 <body>
@@ -637,23 +643,25 @@
     
     <!-- 离线状态指示器 -->
     <div class="offline-indicator" id="offlineIndicator">
-        <span>⚠️ 离线模式 - 数据将保存在本地</span>
+        <span>📴 离线模式 - 数据保存在本地</span>
     </div>
 
-    <!-- Service Worker 更新提示 -->
-    <div class="sw-update-toast" id="swUpdateToast">
-        <div style="display: flex; align-items: center; justify-content: space-between;">
-            <span style="font-weight: 600;">发现新版本</span>
-            <button class="btn btn-small" style="background: #0c1015; color: var(--accent); width: auto;" onclick="updateApp()">立即更新</button>
-        </div>
-    </div>
+    <!-- 纯离线模式标识 -->
+    <div class="pure-offline-badge" id="pureOfflineBadge">✓ 纯离线运行</div>
+
+    <!-- 数据保存状态 -->
+    <div class="data-status" id="dataStatus">💾 数据已自动保存</div>
     
     <div class="app-shell">
         <header class="app-header">
             <div class="header-inner">
                 <div style="display: flex; align-items: center; gap: 10px;">
                     <div style="width: 32px; height: 32px; background: linear-gradient(135deg, var(--accent), #00b894); border-radius: 8px; display: flex; align-items: center; justify-content: center;">
-                        <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="#0c1015" stroke-width="2.5"><path d="M17 21v-2a4 4 0 0 0-4-4H5a4 4 0 0 0-4 4v2"/><circle cx="9" cy="7" r="4"/></svg>
+                        <!-- 内联 SVG，无外部依赖 -->
+                        <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="#0c1015" stroke-width="2.5">
+                            <path d="M17 21v-2a4 4 0 0 0-4-4H5a4 4 0 0 0-4 4v2"/>
+                            <circle cx="9" cy="7" r="4"/>
+                        </svg>
                     </div>
                     <span class="header-title" id="pageTitle">联系日历</span>
                 </div>
@@ -667,8 +675,11 @@
                 <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 12px; margin-bottom: 20px;">
                     <div class="card stat-card-clickable" style="background: var(--card); border:none; border-radius:16px; margin:0;" onclick="navigate('clients')">
                         <div style="padding: 16px; display: flex; align-items: center; gap: 16px;">
-                            <div style="width: 48px; height: 48px; border-radius: 12px; display: flex; align-items: center; justify-content: center; background: var(--accent-soft); color: var(--accent); font-weight: 600; font-size: 20px;">
-                                <svg width="24" height="24" fill="none" stroke="currentColor" stroke-width="2"><path d="M17 21v-2a4 4 0 0 0-4-4H5a4 4 0 0 0-4 4v2"/><circle cx="9" cy="7" r="4"/></svg>
+                            <div style="width: 48px; height: 48px; border-radius: 12px; display: flex; align-items: center; justify-content: center; background: var(--accent-soft); color: var(--accent);">
+                                <svg width="24" height="24" fill="none" stroke="currentColor" stroke-width="2">
+                                    <path d="M17 21v-2a4 4 0 0 0-4-4H5a4 4 0 0 0-4 4v2"/>
+                                    <circle cx="9" cy="7" r="4"/>
+                                </svg>
                             </div>
                             <div>
                                 <div style="font-size: 24px; font-weight: 700;" id="statClients">0</div>
@@ -678,9 +689,12 @@
                     </div>
                     
                     <div class="card" style="background: var(--card); border:none; border-radius:16px; margin:0;">
-                         <div style="padding: 16px; display: flex; align-items: center; gap: 16px;">
-                            <div style="width: 48px; height: 48px; border-radius: 12px; display: flex; align-items: center; justify-content: center; background: rgba(255, 167, 38, 0.15); color: var(--warning); font-weight: 600; font-size: 20px;">
-                                <svg width="24" height="24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="12" r="10"/><polyline points="12 6 12 12 16 14"/></svg>
+                        <div style="padding: 16px; display: flex; align-items: center; gap: 16px;">
+                            <div style="width: 48px; height: 48px; border-radius: 12px; display: flex; align-items: center; justify-content: center; background: rgba(255, 167, 38, 0.15); color: var(--warning);">
+                                <svg width="24" height="24" fill="none" stroke="currentColor" stroke-width="2">
+                                    <circle cx="12" cy="12" r="10"/>
+                                    <polyline points="12 6 12 12 16 14"/>
+                                </svg>
                             </div>
                             <div style="flex: 1;">
                                 <div style="font-size: 24px; font-weight: 700;" id="statPending">0</div>
@@ -690,7 +704,7 @@
                                         <span style="font-size: 12px; font-weight: 600; color: var(--danger);">
                                             含 <span id="statOverdue">0</span> 个已过期
                                         </span>
-                                        <button class="btn btn-danger btn-small" style="padding: 2px 8px; font-size: 11px; height: auto; width: auto;" onclick="event.stopPropagation(); toggleHomeFilter(true)">查看</button>
+                                        <button class="btn btn-danger btn-small" style="padding: 2px 8px; font-size: 11px; width: auto;" onclick="event.stopPropagation(); toggleHomeFilter(true)">查看</button>
                                     </div>
                                 </div>
                             </div>
@@ -703,7 +717,7 @@
                         <h3 style="font-size: 16px; margin-bottom: 4px;" id="home-list-title">近期计划</h3>
                         <div style="font-size: 13px; color: var(--text-muted);" id="home-date-info"></div>
                     </div>
-                    <button id="btn-clear-filter" class="btn btn-secondary btn-small" style="display: none;" onclick="toggleHomeFilter(false)">返回全部</button>
+                    <button id="btn-clear-filter" class="btn btn-secondary btn-small" style="display: none; width: auto;" onclick="toggleHomeFilter(false)">返回全部</button>
                 </div>
 
                 <div class="card" style="padding: 0;">
@@ -720,8 +734,12 @@
                         <button class="btn btn-primary" onclick="openModal('client')" style="width: auto; padding: 0 16px; white-space: nowrap;">新增</button>
                     </div>
                     <div class="action-row">
-                        <button class="btn btn-secondary btn-small" onclick="exportClients()">
-                            <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/><polyline points="7 10 12 15 17 10"/><line x1="12" y1="15" x2="12" y2="3"/></svg>
+                        <button class="btn btn-secondary btn-small" onclick="exportClients()" style="width: auto;">
+                            <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                                <path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/>
+                                <polyline points="7 10 12 15 17 10"/>
+                                <line x1="12" y1="15" x2="12" y2="3"/>
+                            </svg>
                             导出客户清单
                         </button>
                     </div>
@@ -739,9 +757,9 @@
 
                 <div id="cal-container-month">
                     <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 16px;">
-                        <button class="btn btn-secondary btn-small" onclick="changeMonth(-1)"><</button>
+                        <button class="btn btn-secondary btn-small" onclick="changeMonth(-1)" style="width: auto;"><</button>
                         <h3 style="font-size: 16px;" id="calTitle"></h3>
-                        <button class="btn btn-secondary btn-small" onclick="changeMonth(1)">></button>
+                        <button class="btn btn-secondary btn-small" onclick="changeMonth(1)" style="width: auto;">></button>
                     </div>
                     <div class="calendar-grid" id="calendarGrid"></div>
                     
@@ -755,19 +773,19 @@
                 </div>
 
                 <div id="cal-container-week" style="display:none;">
-                     <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 16px;">
-                        <button class="btn btn-secondary btn-small" onclick="changeWeek(-1)"><</button>
+                    <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 16px;">
+                        <button class="btn btn-secondary btn-small" onclick="changeWeek(-1)" style="width: auto;"><</button>
                         <h3 style="font-size: 16px;" id="calTitleWeek"></h3>
-                        <button class="btn btn-secondary btn-small" onclick="changeWeek(1)">></button>
+                        <button class="btn btn-secondary btn-small" onclick="changeWeek(1)" style="width: auto;">></button>
                     </div>
                     <div id="weekList"></div>
                 </div>
 
                 <div id="cal-container-day" style="display:none;">
-                     <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 16px;">
-                        <button class="btn btn-secondary btn-small" onclick="changeDay(-1)"><</button>
+                    <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 16px;">
+                        <button class="btn btn-secondary btn-small" onclick="changeDay(-1)" style="width: auto;"><</button>
                         <h3 style="font-size: 16px;" id="calTitleDay"></h3>
-                        <button class="btn btn-secondary btn-small" onclick="changeDay(1)">></button>
+                        <button class="btn btn-secondary btn-small" onclick="changeDay(1)" style="width: auto;">></button>
                     </div>
                     <div id="dayList"></div>
                     <button class="btn btn-primary" style="margin-top: 20px;" onclick="openModal('visit', null, getSelectedDayStr())">添加今日联系</button>
@@ -779,8 +797,12 @@
                 <div style="position: sticky; top: 0; background: var(--bg); z-index: 10; padding-bottom: 12px;">
                     <div id="record-filter-bar"></div>
                     <div class="action-row" style="margin-top:0; margin-bottom: 0px;">
-                         <button class="btn btn-secondary btn-small" onclick="exportVisits()">
-                            <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/><polyline points="7 10 12 15 17 10"/><line x1="12" y1="15" x2="12" y2="3"/></svg>
+                        <button class="btn btn-secondary btn-small" onclick="exportVisits()" style="width: auto;">
+                            <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                                <path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/>
+                                <polyline points="7 10 12 15 17 10"/>
+                                <line x1="12" y1="15" x2="12" y2="3"/>
+                            </svg>
                             导出联系履历
                         </button>
                     </div>
@@ -791,24 +813,45 @@
 
         <nav class="bottom-nav">
             <div class="nav-item-mobile" data-view="home">
-                <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M3 9l9-7 9 7v11a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2z"/><polyline points="9 22 9 12 15 12 15 22"/></svg>
+                <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                    <path d="M3 9l9-7 9 7v11a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2z"/>
+                    <polyline points="9 22 9 12 15 12 15 22"/>
+                </svg>
                 <span>首页</span>
             </div>
             <div class="nav-item-mobile" data-view="clients">
-                <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M17 21v-2a4 4 0 0 0-4-4H5a4 4 0 0 0-4 4v2"/><circle cx="9" cy="7" r="4"/><path d="M23 21v-2a4 4 0 0 0-3-3.87"/><path d="M16 3.13a4 4 0 0 1 0 7.75"/></svg>
+                <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                    <path d="M17 21v-2a4 4 0 0 0-4-4H5a4 4 0 0 0-4 4v2"/>
+                    <circle cx="9" cy="7" r="4"/>
+                    <path d="M23 21v-2a4 4 0 0 0-3-3.87"/>
+                    <path d="M16 3.13a4 4 0 0 1 0 7.75"/>
+                </svg>
                 <span>客户</span>
             </div>
             <div class="nav-item-mobile" onclick="openModal('visit')" style="position: relative; top: -10px;">
-                 <div style="width: 56px; height: 56px; background: var(--accent); border-radius: 16px; display: flex; align-items: center; justify-content: center; box-shadow: 0 4px 12px rgba(0,212,170,0.3);">
-                    <svg width="28" height="28" viewBox="0 0 24 24" fill="none" stroke="#0c1015" stroke-width="2.5"><line x1="12" y1="5" x2="12" y2="19"/><line x1="5" y1="12" x2="19" y2="12"/></svg>
+                <div style="width: 56px; height: 56px; background: var(--accent); border-radius: 16px; display: flex; align-items: center; justify-content: center; box-shadow: 0 4px 12px rgba(0,212,170,0.3);">
+                    <svg width="28" height="28" viewBox="0 0 24 24" fill="none" stroke="#0c1015" stroke-width="2.5">
+                        <line x1="12" y1="5" x2="12" y2="19"/>
+                        <line x1="5" y1="12" x2="19" y2="12"/>
+                    </svg>
                 </div>
             </div>
             <div class="nav-item-mobile active" data-view="calendar">
-                <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="3" y="4" width="18" height="18" rx="2" ry="2"/><line x1="16" y1="2" x2="16" y2="6"/><line x1="8" y1="2" x2="8" y2="6"/><line x1="3" y1="10" x2="21" y2="10"/></svg>
+                <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                    <rect x="3" y="4" width="18" height="18" rx="2" ry="2"/>
+                    <line x1="16" y1="2" x2="16" y2="6"/>
+                    <line x1="8" y1="2" x2="8" y2="6"/>
+                    <line x1="3" y1="10" x2="21" y2="10"/>
+                </svg>
                 <span>日历</span>
             </div>
             <div class="nav-item-mobile" data-view="records">
-                <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"/><polyline points="14 2 14 8 20 8"/><line x1="16" y1="13" x2="8" y2="13"/><line x1="16" y1="17" x2="8" y2="17"/></svg>
+                <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                    <path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"/>
+                    <polyline points="14 2 14 8 20 8"/>
+                    <line x1="16" y1="13" x2="8" y2="13"/>
+                    <line x1="16" y1="17" x2="8" y2="17"/>
+                </svg>
                 <span>记录</span>
             </div>
         </nav>
@@ -818,7 +861,10 @@
     <div class="pwa-install-toast" id="pwaInstallToast">
         <div style="display: flex; align-items: center; gap: 12px;">
             <div style="width: 48px; height: 48px; background: linear-gradient(135deg, var(--accent), #00b894); border-radius: 12px; display: flex; align-items: center; justify-content: center;">
-                <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="#0c1015" stroke-width="2.5"><path d="M17 21v-2a4 4 0 0 0-4-4H5a4 4 0 0 0-4 4v2"/><circle cx="9" cy="7" r="4"/></svg>
+                <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="#0c1015" stroke-width="2.5">
+                    <path d="M17 21v-2a4 4 0 0 0-4-4H5a4 4 0 0 0-4 4v2"/>
+                    <circle cx="9" cy="7" r="4"/>
+                </svg>
             </div>
             <div style="flex: 1;">
                 <div style="font-weight: 600; margin-bottom: 2px;">添加到主屏幕</div>
@@ -844,10 +890,17 @@
         </div>
     </div>
 
-    <!-- 应用逻辑 -->
+    <!-- 应用逻辑 - 完全独立，零外部依赖 -->
     <script>
-        // ===== 数据管理 =====
+        // ============================================
+        // 核心数据管理 - 纯本地存储，无需服务器
+        // ============================================
+        const DB_NAME = 'crm_offline_db';
+        const DB_VERSION = 1;
+        let db = null;
         let data = { clients: [], industries: [], visits: [] };
+        
+        // 状态变量
         let currentMonth = new Date();
         let currentWeek = new Date();
         let currentDay = new Date();
@@ -856,176 +909,106 @@
         let activeRecordFilter = 'all';
         let homeFilterOverdue = false;
         let selectedMonthDate = null;
+        let isPureOffline = false;
 
-        // ===== Service Worker 注册（支持离线）=====
-        const registerServiceWorker = () => {
-            if (!('serviceWorker' in navigator)) {
-                console.log('Service Worker 不支持');
-                return;
-            }
-
-            // 创建内联 Service Worker
-            const swContent = `
-                const CACHE_NAME = 'crm-app-v1';
-                const STATIC_ASSETS = [
-                    '/',
-                    'index.html'
-                ];
-
-                // 安装：缓存静态资源
-                self.addEventListener('install', (event) => {
-                    console.log('[SW] Installing...');
-                    event.waitUntil(
-                        caches.open(CACHE_NAME).then((cache) => {
-                            console.log('[SW] Caching static assets');
-                            return cache.addAll(STATIC_ASSETS);
-                        }).catch(err => {
-                            console.log('[SW] Cache failed:', err);
-                        })
-                    );
-                    self.skipWaiting();
-                });
-
-                // 激活：清理旧缓存
-                self.addEventListener('activate', (event) => {
-                    console.log('[SW] Activating...');
-                    event.waitUntil(
-                        caches.keys().then((cacheNames) => {
-                            return Promise.all(
-                                cacheNames.map((cacheName) => {
-                                    if (cacheName !== CACHE_NAME) {
-                                        console.log('[SW] Deleting old cache:', cacheName);
-                                        return caches.delete(cacheName);
-                                    }
-                                })
-                            );
-                        })
-                    );
-                    self.clients.claim();
-                });
-
-                // 拦截请求：优先网络，离线使用缓存
-                self.addEventListener('fetch', (event) => {
-                    const { request } = event;
-                    
-                    // 只处理 GET 请求
-                    if (request.method !== 'GET') return;
-
-                    // 跳过 chrome-extension 和其他非 http 请求
-                    if (!request.url.startsWith('http')) return;
-
-                    event.respondWith(
-                        fetch(request)
-                            .then((response) => {
-                                // 网络成功，更新缓存
-                                if (response && response.status === 200) {
-                                    const responseClone = response.clone();
-                                    caches.open(CACHE_NAME).then((cache) => {
-                                        cache.put(request, responseClone);
-                                    });
-                                }
-                                return response;
-                            })
-                            .catch(() => {
-                                // 网络失败，使用缓存
-                                console.log('[SW] Serving from cache:', request.url);
-                                return caches.match(request).then((cached) => {
-                                    if (cached) return cached;
-                                    // 缓存也没有，返回离线页面
-                                    return new Response(
-                                        '<h1>离线模式</h1><p>请连接网络后刷新</p>',
-                                        { status: 503, headers: { 'Content-Type': 'text/html' } }
-                                    );
-                                });
-                            })
-                    );
-                });
-
-                // 后台同步（用于离线数据同步）
-                self.addEventListener('sync', (event) => {
-                    if (event.tag === 'sync-data') {
-                        console.log('[SW] Background sync triggered');
+        // ============================================
+        // IndexedDB 封装 - 比 LocalStorage 更可靠
+        // ============================================
+        const initDB = () => {
+            return new Promise((resolve, reject) => {
+                const request = indexedDB.open(DB_NAME, DB_VERSION);
+                
+                request.onerror = () => {
+                    console.log('IndexedDB failed, fallback to localStorage');
+                    isPureOffline = true;
+                    resolve(null);
+                };
+                
+                request.onsuccess = (event) => {
+                    db = event.target.result;
+                    resolve(db);
+                };
+                
+                request.onupgradeneeded = (event) => {
+                    const database = event.target.result;
+                    if (!database.objectStoreNames.contains('data')) {
+                        database.createObjectStore('data', { keyPath: 'key' });
                     }
-                });
-            `;
-
-            // 将 SW 代码转换为 Blob URL
-            const swBlob = new Blob([swContent], { type: 'application/javascript' });
-            const swUrl = URL.createObjectURL(swBlob);
-
-            navigator.serviceWorker.register(swUrl)
-                .then((registration) => {
-                    console.log('[SW] Registered:', registration.scope);
-                    
-                    // 监听更新
-                    registration.addEventListener('updatefound', () => {
-                        const newWorker = registration.installing;
-                        newWorker.addEventListener('statechange', () => {
-                            if (newWorker.state === 'installed' && navigator.serviceWorker.controller) {
-                                // 有新版本
-                                showUpdateToast();
-                            }
-                        });
-                    });
-                })
-                .catch((error) => {
-                    console.log('[SW] Registration failed:', error);
-                });
-
-            // 监听离线/在线状态
-            window.addEventListener('online', () => {
-                document.getElementById('offlineIndicator').classList.remove('show');
-                console.log('App is online');
+                };
             });
-
-            window.addEventListener('offline', () => {
-                document.getElementById('offlineIndicator').classList.add('show');
-                console.log('App is offline');
-            });
-
-            // 初始状态检查
-            if (!navigator.onLine) {
-                document.getElementById('offlineIndicator').classList.add('show');
-            }
         };
 
-        // 显示更新提示
-        const showUpdateToast = () => {
-            document.getElementById('swUpdateToast').classList.add('show');
-        };
-
-        // 更新应用
-        window.updateApp = () => {
-            if ('serviceWorker' in navigator) {
-                navigator.serviceWorker.ready.then((registration) => {
-                    registration.update().then(() => {
-                        window.location.reload();
-                    });
-                });
-            }
-        };
-
-        // ===== 全局关闭模态框函数 =====
-        window.closeModal = () => {
-            document.getElementById('modalOverlay').classList.remove('active');
-        };
-
-        const loadData = () => {
-            try {
-                const stored = localStorage.getItem('crm_app_data_v4');
-                if (stored) {
-                    data = JSON.parse(stored);
-                    data.visits.forEach(v => {
-                        if (!v.contactType) v.contactType = '';
-                        if (!v.status) v.status = 'pending';
-                    });
-                } else {
-                    initDefaultData();
+        const dbGet = async (key) => {
+            if (!db) {
+                try {
+                    const item = localStorage.getItem(`crm_${key}`);
+                    return item ? JSON.parse(item) : null;
+                } catch (e) {
+                    return null;
                 }
-            } catch (e) {
-                console.error('Load data failed:', e);
+            }
+            
+            return new Promise((resolve) => {
+                const transaction = db.transaction(['data'], 'readonly');
+                const store = transaction.objectStore('data');
+                const request = store.get(key);
+                
+                request.onsuccess = () => resolve(request.result?.value || null);
+                request.onerror = () => resolve(null);
+            });
+        };
+
+        const dbSet = async (key, value) => {
+            if (!db) {
+                try {
+                    localStorage.setItem(`crm_${key}`, JSON.stringify(value));
+                    showDataStatus();
+                    return true;
+                } catch (e) {
+                    alert('存储空间不足，请导出数据后清理');
+                    return false;
+                }
+            }
+            
+            return new Promise((resolve) => {
+                const transaction = db.transaction(['data'], 'readwrite');
+                const store = transaction.objectStore('data');
+                const request = store.put({ key, value });
+                
+                request.onsuccess = () => {
+                    showDataStatus();
+                    resolve(true);
+                };
+                request.onerror = () => resolve(false);
+            });
+        };
+
+        const showDataStatus = () => {
+            const el = document.getElementById('dataStatus');
+            el.classList.add('show', 'saved');
+            setTimeout(() => el.classList.remove('show', 'saved'), 1500);
+        };
+
+        // ============================================
+        // 数据加载与保存
+        // ============================================
+        const loadData = async () => {
+            const stored = await dbGet('main_data');
+            
+            if (stored && stored.clients) {
+                data = stored;
+                // 数据迁移
+                data.visits.forEach(v => {
+                    if (!v.contactType) v.contactType = '';
+                    if (!v.status) v.status = 'pending';
+                });
+            } else {
                 initDefaultData();
             }
+        };
+
+        const saveData = async () => {
+            await dbSet('main_data', data);
         };
 
         const initDefaultData = () => {
@@ -1044,15 +1027,9 @@
             saveData();
         };
 
-        const saveData = () => {
-            try {
-                localStorage.setItem('crm_app_data_v4', JSON.stringify(data));
-            } catch (e) {
-                console.error('Save data failed:', e);
-            }
-        };
-
-        // ===== 工具函数 =====
+        // ============================================
+        // 工具函数
+        // ============================================
         const getTodayStr = () => {
             const d = new Date();
             return `${d.getFullYear()}-${String(d.getMonth()+1).padStart(2,'0')}-${String(d.getDate()).padStart(2,'0')}`;
@@ -1062,44 +1039,72 @@
             return `${d.getFullYear()}-${String(d.getMonth()+1).padStart(2,'0')}-${String(d.getDate()).padStart(2,'0')}`;
         };
 
-        // ===== 导出功能 =====
+        // ============================================
+        // 导出功能 - 纯本地生成文件
+        // ============================================
         const exportClients = () => {
             if (data.clients.length === 0) return alert('暂无客户数据可导出');
+            
             const headers = ['客户名称', '联系人', '行业', '重点程度', '备注'];
             const rows = data.clients.map(c => {
                 const ind = data.industries.find(i => i.id === c.industryId);
                 return [
-                    `"${c.name}"`, `"${c.contact || ''}"`, `"${ind?.name || '未分类'}"`,
-                    `"${c.level === 'important' ? '重要' : '一般'}"`, `"${(c.notes || '').replace(/"/g, '""')}"`
+                    c.name, 
+                    c.contact || '', 
+                    ind?.name || '未分类',
+                    c.level === 'important' ? '重要' : '一般',
+                    (c.notes || '').replace(/"/g, '""')
                 ];
             });
+            
             downloadCSV('客户清单.csv', headers, rows);
         };
 
         const exportVisits = () => {
             const doneVisits = data.visits.filter(v => v.status === 'done');
             if (doneVisits.length === 0) return alert('暂无联系数据可导出');
+            
             const headers = ['日期', '客户名称', '联系方式', '详情', '下次联系', '跟进目标'];
             const contactMap = { phone: '电话', wechat: '微信', visit: '上门', '': '-' };
+            
             const rows = doneVisits.map(v => {
                 const c = data.clients.find(x => x.id === v.clientId);
-                return [`"${v.date}"`, `"${c?.name || '未知'}"`, `"${contactMap[v.contactType] || '-'}"`,
-                    `"${(v.detail || '').replace(/"/g, '""')}"`, `"${v.nextDate || ''}"`, `"${(v.nextGoal || '').replace(/"/g, '""')}"`];
+                return [
+                    v.date,
+                    c?.name || '未知',
+                    contactMap[v.contactType] || '-',
+                    (v.detail || '').replace(/"/g, '""'),
+                    v.nextDate || '',
+                    (v.nextGoal || '').replace(/"/g, '""')
+                ];
             });
+            
             downloadCSV('联系履历.csv', headers, rows);
         };
 
         const downloadCSV = (filename, headers, rows) => {
             const BOM = '\uFEFF';
-            const csv = BOM + [headers.join(','), ...rows.map(r => r.join(','))].join('\n');
+            const csv = BOM + [headers.join(','), ...rows.map(r => r.map(cell => `"${cell}"`).join(','))].join('\n');
             const blob = new Blob([csv], { type: 'text/csv;charset=utf-8;' });
-            const link = document.createElement('a');
-            link.href = URL.createObjectURL(blob);
-            link.download = filename;
-            link.click();
+            
+            // 兼容各浏览器的下载方式
+            if (navigator.msSaveBlob) {
+                navigator.msSaveBlob(blob, filename);
+            } else {
+                const url = URL.createObjectURL(blob);
+                const link = document.createElement('a');
+                link.href = url;
+                link.download = filename;
+                document.body.appendChild(link);
+                link.click();
+                document.body.removeChild(link);
+                URL.revokeObjectURL(url);
+            }
         };
 
-        // ===== 首页渲染 =====
+        // ============================================
+        // 页面渲染函数
+        // ============================================
         const renderHome = () => {
             const today = getTodayStr();
             const allPending = data.visits.filter(v => v.status === 'pending');
@@ -1144,7 +1149,7 @@
                                     <span class="home-client-name">${c?.name || '未知'}</span>
                                     <span class="tag tag-pending">待联系</span>
                                 </div>
-                                <button class="btn btn-secondary btn-small" style="padding: 4px 10px; font-size: 11px;" onclick="event.stopPropagation(); openModal('history', ${v.clientId})">履历</button>
+                                <button class="btn btn-secondary btn-small" style="padding: 4px 10px; font-size: 11px; width: auto;" onclick="event.stopPropagation(); openModal('history', ${v.clientId})">履历</button>
                             </div>
                             <div class="home-list-row">
                                 <div style="display: flex; align-items: center;">
@@ -1163,7 +1168,6 @@
             renderHome();
         };
 
-        // ===== 客户管理 =====
         const renderClients = () => {
             const filterContainer = document.getElementById('client-filter-bar');
             const counts = { all: data.clients.length };
@@ -1201,8 +1205,11 @@
                             </div>
                         </div>
                         <div style="border-top: 1px solid var(--border); padding: 8px 16px; display: flex; justify-content: flex-end;">
-                            <button class="btn btn-small btn-secondary" style="padding: 4px 12px; font-size: 12px;" onclick="event.stopPropagation(); openModal('history', ${c.id})">
-                                <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="12" r="10"/><polyline points="12 6 12 12 16 14"/></svg>
+                            <button class="btn btn-small btn-secondary" style="padding: 4px 12px; font-size: 12px; width: auto;" onclick="event.stopPropagation(); openModal('history', ${c.id})">
+                                <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                                    <circle cx="12" cy="12" r="10"/>
+                                    <polyline points="12 6 12 12 16 14"/>
+                                </svg>
                                 履历
                             </button>
                         </div>
@@ -1216,7 +1223,6 @@
             renderClients();
         };
 
-        // ===== 日历渲染 =====
         const renderCalendar = () => {
             document.querySelectorAll('.view-switcher-btn').forEach(b => b.classList.toggle('active', b.dataset.mode === calendarMode));
             if (calendarMode === 'month') renderMonthView();
@@ -1242,9 +1248,7 @@
             }
 
             const today = getTodayStr();
-            if (!selectedMonthDate) {
-                selectedMonthDate = today;
-            }
+            if (!selectedMonthDate) selectedMonthDate = today;
 
             for (let d = 1; d <= daysInMonth; d++) {
                 const dateStr = `${y}-${String(m+1).padStart(2,'0')}-${String(d).padStart(2,'0')}`;
@@ -1264,7 +1268,6 @@
                 `;
             }
             document.getElementById('calendarGrid').innerHTML = html;
-
             renderMonthSelectedList();
         };
 
@@ -1320,13 +1323,9 @@
 
                     let itemClass = 'calendar-visit-item';
                     if (isPending) {
-                        if (selectedMonthDate === today) {
-                            itemClass += ' pending-today';
-                        } else if (selectedMonthDate < today) {
-                            itemClass += ' pending-overdue';
-                        } else {
-                            itemClass += ' pending-future';
-                        }
+                        if (selectedMonthDate === today) itemClass += ' pending-today';
+                        else if (selectedMonthDate < today) itemClass += ' pending-overdue';
+                        else itemClass += ' pending-future';
                     }
 
                     return `
@@ -1343,7 +1342,6 @@
                     `;
                 }).join('');
             }
-
             container.style.display = 'block';
         };
 
@@ -1371,7 +1369,7 @@
                         <div style="display: flex; align-items: center; padding: 12px 16px; ${visits.length > 0 ? 'border-bottom:1px solid var(--border)' : ''}">
                             <div style="font-weight: 600; width: 40px; color: ${dateStr === today ? 'var(--accent)' : 'inherit'}">${['日','一','二','三','四','五','六'][d.getDay()]}</div>
                             <div style="color: var(--text-muted); font-size: 13px;">${d.getDate()}日</div>
-                            <button class="btn btn-small btn-secondary" style="margin-left:auto; padding: 4px 8px; font-size: 11px;" onclick="openModal('visit', null, '${dateStr}')">+</button>
+                            <button class="btn btn-small btn-secondary" style="margin-left:auto; padding: 4px 8px; font-size: 11px; width: auto;" onclick="openModal('visit', null, '${dateStr}')">+</button>
                         </div>
                         <div>${visits.map(v => renderVisitItem(v, dateStr)).join('')}</div>
                     </div>
@@ -1425,17 +1423,9 @@
             `;
         };
 
-        window.handleDayClick = (dateStr) => {
-            calendarMode = 'day';
-            currentDay = new Date(dateStr.replace(/-/g, '/'));
-            renderCalendar();
-        };
-
         window.switchCalendarMode = (mode) => {
             calendarMode = mode;
-            if (mode === 'month') {
-                selectedMonthDate = getTodayStr();
-            }
+            if (mode === 'month') selectedMonthDate = getTodayStr();
             renderCalendar();
         };
 
@@ -1448,7 +1438,6 @@
         window.changeDay = (d) => { currentDay.setDate(currentDay.getDate() + d); renderDayView(); };
         window.getSelectedDayStr = () => formatObjToStr(currentDay);
 
-        // ===== 记录页面 =====
         const renderRecords = () => {
             const filterWrapper = document.getElementById('record-filter-bar');
             const options = data.clients.map(c => `<option value="${c.id}" ${activeRecordFilter == c.id ? 'selected' : ''}>${c.name}</option>`).join('');
@@ -1487,7 +1476,9 @@
 
         window.filterRecords = (id) => { activeRecordFilter = id; renderRecords(); };
 
-        // ===== 导航 =====
+        // ============================================
+        // 导航
+        // ============================================
         window.navigate = (viewId) => {
             document.querySelectorAll('.view').forEach(v => v.classList.remove('active'));
             document.getElementById(`view-${viewId}`).classList.add('active');
@@ -1506,7 +1497,13 @@
             document.getElementById('pageTitle').innerText = titles[viewId];
         };
 
-        // ===== 模态框 =====
+        // ============================================
+        // 模态框系统
+        // ============================================
+        window.closeModal = () => {
+            document.getElementById('modalOverlay').classList.remove('active');
+        };
+
         window.openModal = (type, id = null, dateOverride = null, preselectedClient = null) => {
             const overlay = document.getElementById('modalOverlay');
             const body = document.getElementById('modalBody');
@@ -1514,14 +1511,14 @@
             const footer = document.getElementById('modalFooter');
 
             const standardFooter = `
-                <button class="btn btn-secondary" onclick="closeModal()">取消</button>
-                <button class="btn btn-primary" id="modalSaveBtn">保存</button>
+                <button class="btn btn-secondary" onclick="closeModal()" style="flex: 1;">取消</button>
+                <button class="btn btn-primary" id="modalSaveBtn" style="flex: 1;">保存</button>
             `;
 
             const deleteFooter = (deleteFn) => `
-                <button class="btn btn-danger" onclick="${deleteFn}">删除</button>
-                <button class="btn btn-secondary" onclick="closeModal()" style="flex:1;">取消</button>
-                <button class="btn btn-primary" id="modalSaveBtn" style="flex:1;">保存</button>
+                <button class="btn btn-danger" onclick="${deleteFn}" style="flex: 1;">删除</button>
+                <button class="btn btn-secondary" onclick="closeModal()" style="flex: 1;">取消</button>
+                <button class="btn btn-primary" id="modalSaveBtn" style="flex: 1;">保存</button>
             `;
 
             if (type === 'client') {
@@ -1533,7 +1530,7 @@
                     <input type="text" class="form-input" id="c_contact" value="${c.contact || ''}" placeholder="联系人">
                     <div style="display: flex; gap: 8px; align-items: center;">
                         <select class="form-select" id="c_industry" style="margin-bottom:0; flex:1"><option value="">未选择</option>${indOpts}</select>
-                        <button class="btn btn-secondary btn-small" onclick="openModal('industry')">管理</button>
+                        <button class="btn btn-secondary btn-small" onclick="openModal('industry')" style="width: auto;">管理</button>
                     </div>
                     <select class="form-select" id="c_level" style="margin-top:12px;"><option value="normal" ${c.level === 'normal' ? 'selected' : ''}>一般</option><option value="important" ${c.level === 'important' ? 'selected' : ''}>重要</option></select>
                     <textarea class="form-input" id="c_notes" placeholder="备注">${c.notes || ''}</textarea>
@@ -1541,7 +1538,7 @@
                 `;
                 footer.innerHTML = standardFooter;
                 
-                document.getElementById('modalSaveBtn').onclick = () => {
+                document.getElementById('modalSaveBtn').onclick = async () => {
                     const name = document.getElementById('c_name')?.value;
                     if (!name) return alert('请填写客户名称');
                     const clientData = {
@@ -1555,13 +1552,18 @@
                     } else {
                         const newId = Date.now();
                         data.clients.push({ id: newId, ...clientData, avatar: name.charAt(0) });
+                        await saveData();
                         setTimeout(() => {
                             if (confirm('客户信息已保存。是否立即添加联系计划？')) {
                                 openModal('visit', null, null, newId);
                             }
                         }, 300);
+                        return;
                     }
-                    saveData(); closeModal(); renderClients(); renderHome();
+                    await saveData();
+                    closeModal();
+                    renderClients();
+                    renderHome();
                 };
             }
             else if (type === 'industry') {
@@ -1576,10 +1578,10 @@
                     <div style="margin-bottom:16px;">${list || '<div style="color:var(--text-muted); text-align:center;">暂无行业</div>'}</div>
                     <div style="display:flex; gap:8px;">
                         <input type="text" id="new_industry" class="form-input" placeholder="新行业名称" style="margin-bottom:0;">
-                        <button class="btn btn-primary btn-small" onclick="addIndustry()">添加</button>
+                        <button class="btn btn-primary btn-small" onclick="addIndustry()" style="width: auto;">添加</button>
                     </div>
                 `;
-                footer.innerHTML = `<button class="btn btn-secondary" onclick="closeModal()">关闭</button>`;
+                footer.innerHTML = `<button class="btn btn-secondary" onclick="closeModal()" style="flex: 1;">关闭</button>`;
             }
             else if (type === 'visit') {
                 header.innerText = '新建联系计划';
@@ -1591,7 +1593,7 @@
                 `;
                 footer.innerHTML = standardFooter;
                 
-                document.getElementById('modalSaveBtn').onclick = () => {
+                document.getElementById('modalSaveBtn').onclick = async () => {
                     const clientId = parseInt(document.getElementById('m_client')?.value);
                     const date = document.getElementById('m_date')?.value;
                     const notes = document.getElementById('m_notes')?.value || '';
@@ -1610,7 +1612,10 @@
                         id: Date.now(), clientId, date, status: 'pending', notes,
                         detail: '', nextDate: '', nextGoal: '', stopReason: '', contactType: ''
                     });
-                    saveData(); closeModal(); renderHome(); renderCalendar();
+                    await saveData();
+                    closeModal();
+                    renderHome();
+                    renderCalendar();
                 };
             }
             else if (type === 'visit_edit') {
@@ -1634,7 +1639,7 @@
                     
                     footer.innerHTML = deleteFooter(`deleteVisit(${id})`);
                     
-                    document.getElementById('modalSaveBtn').onclick = () => {
+                    document.getElementById('modalSaveBtn').onclick = async () => {
                         const newDate = document.getElementById('edit_pending_date').value;
                         const newNotes = document.getElementById('edit_pending_notes').value;
                         
@@ -1648,15 +1653,13 @@
                         );
                         
                         if (conflict) {
-                            if (!confirm('该客户当天已有其他联系计划，确定要调整到这个日期吗？')) {
-                                return;
-                            }
+                            if (!confirm('该客户当天已有其他联系计划，确定要调整到这个日期吗？')) return;
                         }
                         
                         visit.date = newDate;
                         visit.notes = newNotes;
                         
-                        saveData();
+                        await saveData();
                         closeModal();
                         renderHome();
                         renderCalendar();
@@ -1687,15 +1690,15 @@
                         <label style="font-size:12px; color:var(--text-muted);">联系方式 <span class="required-star">*</span></label>
                         <div class="contact-type-options" style="margin-top:8px;">
                             <div class="contact-type-option ${visit.contactType === 'phone' ? 'active' : ''}" id="edit_ct_phone" onclick="setEditContactType('phone')">
-                                <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M22 16.92v3a2 2 0 0 1-2.18 2 19.79 19.79 0 0 1-8.63-3.07 19.5 19.5 0 0 1-6-6 19.79 19.79 0 0 1-3.07-8.67A2 2 0 0 1 4.11 2h3a2 2 0 0 1 2 1.72 12.84 12.84 0 0 0 .7 2.81 2 2 0 0 1-.45 2.11L8.09 9.91a16 16 0 0 0 6 6l1.27-1.27a2 2 0 0 1 2.11-.45 12.84 12.84 0 0 0 2.81.7A2 2 0 0 1 22 16.92z"/></svg>
+                                <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" style="width:20px;height:20px;margin-bottom:4px;"><path d="M22 16.92v3a2 2 0 0 1-2.18 2 19.79 19.79 0 0 1-8.63-3.07 19.5 19.5 0 0 1-6-6 19.79 19.79 0 0 1-3.07-8.67A2 2 0 0 1 4.11 2h3a2 2 0 0 1 2 1.72 12.84 12.84 0 0 0 .7 2.81 2 2 0 0 1-.45 2.11L8.09 9.91a16 16 0 0 0 6 6l1.27-1.27a2 2 0 0 1 2.11-.45 12.84 12.84 0 0 0 2.81.7A2 2 0 0 1 22 16.92z"/></svg>
                                 <div>电话</div>
                             </div>
                             <div class="contact-type-option ${visit.contactType === 'wechat' ? 'active' : ''}" id="edit_ct_wechat" onclick="setEditContactType('wechat')">
-                                <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M21 11.5a8.38 8.38 0 0 1-.9 3.8 8.5 8.5 0 0 1-7.6 4.7 8.38 8.38 0 0 1-3.8-.9L3 21l1.9-5.7a8.38 8.38 0 0 1-.9-3.8 8.5 8.5 0 0 1 4.7-7.6 8.38 8.38 0 0 1 3.8-.9h.5a8.48 8.48 0 0 1 8 8v.5z"/></svg>
+                                <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" style="width:20px;height:20px;margin-bottom:4px;"><path d="M21 11.5a8.38 8.38 0 0 1-.9 3.8 8.5 8.5 0 0 1-7.6 4.7 8.38 8.38 0 0 1-3.8-.9L3 21l1.9-5.7a8.38 8.38 0 0 1-.9-3.8 8.5 8.5 0 0 1 4.7-7.6 8.38 8.38 0 0 1 3.8-.9h.5a8.48 8.48 0 0 1 8 8v.5z"/></svg>
                                 <div>微信</div>
                             </div>
                             <div class="contact-type-option ${visit.contactType === 'visit' ? 'active' : ''}" id="edit_ct_visit" onclick="setEditContactType('visit')">
-                                <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M3 9l9-7 9 7v11a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2z"/><polyline points="9 22 9 12 15 12 15 22"/></svg>
+                                <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" style="width:20px;height:20px;margin-bottom:4px;"><path d="M3 9l9-7 9 7v11a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2z"/><polyline points="9 22 9 12 15 12 15 22"/></svg>
                                 <div>上门</div>
                             </div>
                         </div>
@@ -1783,7 +1786,7 @@
                     }
                 };
 
-                document.getElementById('modalSaveBtn').onclick = () => {
+                document.getElementById('modalSaveBtn').onclick = async () => {
                     const status = document.getElementById('edit_status').value;
                     const detail = document.getElementById('edit_detail').value;
                     
@@ -1815,11 +1818,7 @@
                                         date: nextDate,
                                         status: 'pending',
                                         notes: `跟进: ${nextGoal || ''}`,
-                                        detail: '',
-                                        nextDate: '',
-                                        nextGoal: '',
-                                        stopReason: '',
-                                        contactType: ''
+                                        detail: '', nextDate: '', nextGoal: '', stopReason: '', contactType: ''
                                     });
                                 }
                             }
@@ -1839,7 +1838,7 @@
                         }
                     }
 
-                    saveData();
+                    await saveData();
                     closeModal();
                     renderHome();
                     renderCalendar();
@@ -1877,7 +1876,7 @@
                         `;
                     }).join('');
                 
-                footer.innerHTML = `<button class="btn btn-secondary" onclick="closeModal()">关闭</button>`;
+                footer.innerHTML = `<button class="btn btn-secondary" onclick="closeModal()" style="flex: 1;">关闭</button>`;
                 overlay.classList.add('active');
                 return;
             }
@@ -1885,7 +1884,9 @@
             overlay.classList.add('active');
         };
 
-        // ===== 首页反馈弹窗 =====
+        // ============================================
+        // 反馈弹窗
+        // ============================================
         window.openFeedbackModal = (visitId) => {
             const visit = data.visits.find(v => v.id === visitId);
             if (!visit) {
@@ -1922,15 +1923,15 @@
                     <label style="font-size:12px; color:var(--text-muted);">联系方式 <span class="required-star">*</span></label>
                     <div class="contact-type-options" style="margin-top:8px;">
                         <div class="contact-type-option active" id="fb_ct_phone" onclick="setFbContactType('phone')">
-                            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M22 16.92v3a2 2 0 0 1-2.18 2 19.79 19.79 0 0 1-8.63-3.07 19.5 19.5 0 0 1-6-6 19.79 19.79 0 0 1-3.07-8.67A2 2 0 0 1 4.11 2h3a2 2 0 0 1 2 1.72 12.84 12.84 0 0 0 .7 2.81 2 2 0 0 1-.45 2.11L8.09 9.91a16 16 0 0 0 6 6l1.27-1.27a2 2 0 0 1 2.11-.45 12.84 12.84 0 0 0 2.81.7A2 2 0 0 1 22 16.92z"/></svg>
+                            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" style="width:20px;height:20px;margin-bottom:4px;"><path d="M22 16.92v3a2 2 0 0 1-2.18 2 19.79 19.79 0 0 1-8.63-3.07 19.5 19.5 0 0 1-6-6 19.79 19.79 0 0 1-3.07-8.67A2 2 0 0 1 4.11 2h3a2 2 0 0 1 2 1.72 12.84 12.84 0 0 0 .7 2.81 2 2 0 0 1-.45 2.11L8.09 9.91a16 16 0 0 0 6 6l1.27-1.27a2 2 0 0 1 2.11-.45 12.84 12.84 0 0 0 2.81.7A2 2 0 0 1 22 16.92z"/></svg>
                             <div>电话</div>
                         </div>
                         <div class="contact-type-option" id="fb_ct_wechat" onclick="setFbContactType('wechat')">
-                            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M21 11.5a8.38 8.38 0 0 1-.9 3.8 8.5 8.5 0 0 1-7.6 4.7 8.38 8.38 0 0 1-3.8-.9L3 21l1.9-5.7a8.38 8.38 0 0 1-.9-3.8 8.5 8.5 0 0 1 4.7-7.6 8.38 8.38 0 0 1 3.8-.9h.5a8.48 8.48 0 0 1 8 8v.5z"/></svg>
+                            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" style="width:20px;height:20px;margin-bottom:4px;"><path d="M21 11.5a8.38 8.38 0 0 1-.9 3.8 8.5 8.5 0 0 1-7.6 4.7 8.38 8.38 0 0 1-3.8-.9L3 21l1.9-5.7a8.38 8.38 0 0 1-.9-3.8 8.5 8.5 0 0 1 4.7-7.6 8.38 8.38 0 0 1 3.8-.9h.5a8.48 8.48 0 0 1 8 8v.5z"/></svg>
                             <div>微信</div>
                         </div>
                         <div class="contact-type-option" id="fb_ct_visit" onclick="setFbContactType('visit')">
-                            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M3 9l9-7 9 7v11a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2z"/><polyline points="9 22 9 12 15 12 15 22"/></svg>
+                            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" style="width:20px;height:20px;margin-bottom:4px;"><path d="M3 9l9-7 9 7v11a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2z"/><polyline points="9 22 9 12 15 12 15 22"/></svg>
                             <div>上门</div>
                         </div>
                     </div>
@@ -1966,9 +1967,9 @@
             `;
 
             footer.innerHTML = `
-                <button class="btn btn-danger" onclick="deleteVisitFromFeedback(${visit.id})">删除</button>
-                <button class="btn btn-secondary" onclick="closeModal()" style="flex:1;">取消</button>
-                <button class="btn btn-primary" id="modalSaveBtn" style="flex:1;">保存</button>
+                <button class="btn btn-danger" onclick="deleteVisitFromFeedback(${visit.id})" style="flex: 1;">删除</button>
+                <button class="btn btn-secondary" onclick="closeModal()" style="flex: 1;">取消</button>
+                <button class="btn btn-primary" id="modalSaveBtn" style="flex: 1;">保存</button>
             `;
 
             window.setFbStatus = (s) => {
@@ -2030,19 +2031,18 @@
             const savedContactType = visit.contactType || 'phone';
             setFbContactType(savedContactType);
 
-            window.deleteVisitFromFeedback = (id) => {
+            window.deleteVisitFromFeedback = async (id) => {
                 if (!confirm('确定要删除这条联系计划吗？')) return;
                 data.visits = data.visits.filter(v => v.id !== id);
-                saveData();
+                await saveData();
                 closeModal();
                 renderHome();
                 renderCalendar();
                 renderRecords();
             };
 
-            document.getElementById('modalSaveBtn').onclick = () => {
-                const currentVisitId = visitId;
-                const currentVisit = data.visits.find(v => v.id === currentVisitId);
+            document.getElementById('modalSaveBtn').onclick = async () => {
+                const currentVisit = data.visits.find(v => v.id === visitId);
                 
                 if (!currentVisit) {
                     alert('记录不存在，可能已被删除');
@@ -2081,20 +2081,14 @@
                             );
                             
                             if (!exists) {
-                                const newVisit = {
+                                data.visits.push({
                                     id: Date.now() + Math.floor(Math.random() * 1000),
                                     clientId: currentVisit.clientId,
                                     date: nextDate,
                                     status: 'pending',
                                     notes: `跟进: ${nextGoal || ''}`,
-                                    detail: '',
-                                    nextDate: '',
-                                    nextGoal: '',
-                                    stopReason: '',
-                                    contactType: ''
-                                };
-                                data.visits.push(newVisit);
-                                console.log('Created new pending visit:', newVisit);
+                                    detail: '', nextDate: '', nextGoal: '', stopReason: '', contactType: ''
+                                });
                             }
                         }
                     } else {
@@ -2117,7 +2111,7 @@
                     }
                 }
 
-                saveData();
+                await saveData();
                 closeModal();
                 
                 setTimeout(() => {
@@ -2130,50 +2124,54 @@
             overlay.classList.add('active');
         };
 
-        // ===== 辅助操作 =====
-        window.deleteClient = (id) => {
+        // ============================================
+        // 辅助操作
+        // ============================================
+        window.deleteClient = async (id) => {
             if (!confirm('删除客户将同时删除相关联系记录，确定吗？')) return;
             data.clients = data.clients.filter(c => c.id !== id);
             data.visits = data.visits.filter(v => v.clientId !== id);
-            saveData();
+            await saveData();
             closeModal();
             renderClients();
             renderHome();
         };
 
-        window.deleteVisit = (id) => {
+        window.deleteVisit = async (id) => {
             if (!confirm('确定要删除这条联系计划吗？')) return;
             data.visits = data.visits.filter(v => v.id !== id);
-            saveData();
+            await saveData();
             closeModal();
             renderCalendar();
             renderHome();
         };
 
-        window.addIndustry = () => {
+        window.addIndustry = async () => {
             const input = document.getElementById('new_industry');
             if (!input.value.trim()) return;
             data.industries.push({ id: Date.now(), name: input.value.trim() });
-            saveData();
+            await saveData();
             openModal('industry');
             renderClients();
         };
 
-        window.updateIndustryName = (id, name) => {
+        window.updateIndustryName = async (id, name) => {
             const ind = data.industries.find(i => i.id === id);
             if (ind) ind.name = name;
-            saveData();
+            await saveData();
         };
 
-        window.deleteIndustry = (id) => {
+        window.deleteIndustry = async (id) => {
             if (data.industries.length <= 1) return alert('至少保留一个行业分类');
             data.industries = data.industries.filter(i => i.id !== id);
-            saveData();
+            await saveData();
             openModal('industry');
             renderClients();
         };
 
-        // ===== PWA 安装功能 =====
+        // ============================================
+        // PWA 安装功能
+        // ============================================
         let deferredPrompt;
         const installToast = document.getElementById('pwaInstallToast');
         
@@ -2192,23 +2190,65 @@
             installToast?.classList.remove('show');
         });
 
-        // ===== 初始化 =====
-        document.querySelectorAll('.nav-item-mobile').forEach(el => {
-            if (el.dataset.view) el.addEventListener('click', () => navigate(el.dataset.view));
-        });
-        
-        document.querySelectorAll('.view-switcher-btn').forEach(btn => {
-            btn.addEventListener('click', () => switchCalendarMode(btn.dataset.mode));
-        });
+        // ============================================
+        // 离线状态检测
+        // ============================================
+        const setupOfflineDetection = () => {
+            const updateStatus = () => {
+                const isOnline = navigator.onLine;
+                const offlineIndicator = document.getElementById('offlineIndicator');
+                const pureOfflineBadge = document.getElementById('pureOfflineBadge');
+                
+                if (!isOnline) {
+                    offlineIndicator.classList.add('show');
+                    pureOfflineBadge.classList.add('show');
+                    console.log('📴 进入离线模式');
+                } else {
+                    offlineIndicator.classList.remove('show');
+                    // 保持纯离线标识显示，因为应用本身就是离线设计的
+                    pureOfflineBadge.classList.add('show');
+                }
+            };
 
-        document.getElementById('modalOverlay').addEventListener('click', () => {
-            document.getElementById('modalOverlay').classList.remove('active');
-        });
+            window.addEventListener('online', updateStatus);
+            window.addEventListener('offline', updateStatus);
+            
+            // 初始状态
+            updateStatus();
+        };
 
+        // ============================================
         // 启动应用
-        loadData();
-        registerServiceWorker();
-        navigate('calendar');
+        // ============================================
+        const init = async () => {
+            // 初始化数据库
+            await initDB();
+            
+            // 加载数据
+            await loadData();
+            
+            // 设置离线检测
+            setupOfflineDetection();
+            
+            // 绑定导航
+            document.querySelectorAll('.nav-item-mobile').forEach(el => {
+                if (el.dataset.view) el.addEventListener('click', () => navigate(el.dataset.view));
+            });
+            
+            document.querySelectorAll('.view-switcher-btn').forEach(btn => {
+                btn.addEventListener('click', () => switchCalendarMode(btn.dataset.mode));
+            });
+
+            document.getElementById('modalOverlay').addEventListener('click', () => {
+                document.getElementById('modalOverlay').classList.remove('active');
+            });
+
+            // 初始页面
+            navigate('calendar');
+        };
+
+        // 启动
+        init();
     </script>
 </body>
 </html>
