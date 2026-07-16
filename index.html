@@ -6,14 +6,10 @@
     <meta name="theme-color" content="#0c1015">
     <meta name="apple-mobile-web-app-capable" content="yes">
     <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
-    <!-- 禁用所有外部资源预加载 -->
     <meta http-equiv="Content-Security-Policy" content="default-src 'self' 'unsafe-inline' 'unsafe-eval' data: blob:; img-src 'self' data: blob:; font-src 'self' data:; style-src 'self' 'unsafe-inline'; script-src 'self' 'unsafe-inline' 'unsafe-eval' blob:; connect-src 'self';">
     <title>客户联系管理 Pro</title>
     
-    <!-- 完全移除 manifest，避免任何外部请求 -->
-    
     <style>
-        /* 系统字体栈，确保不请求外部字体 */
         :root {
             --bg: #0c1015;
             --bg-secondary: #131920;
@@ -341,13 +337,15 @@
 
         .modal-body { padding: 20px; overflow-y: auto; flex: 1; }
 
+        /* 修复：补全了缺失的右大括号 */
         .modal-footer {
             padding: 16px 20px;
             padding-bottom: max(16px, env(safe-area-inset-bottom));
             border-top: 1px solid var(--border);
             display: flex;
             gap: 12px;
-               
+        }
+        
         .modal-footer .btn { flex: 1; }
 
         .empty-state {
@@ -624,9 +622,6 @@
         
         .data-status.show { opacity: 1; }
         .data-status.saved { border-color: var(--accent); color: var(--accent); }
-
-        /* 错误隐藏 - 防止显示连接错误 */
-        .error-hidden { display: none !important; }
     </style>
 </head>
 <body>
@@ -885,7 +880,6 @@
         const originalFetch = window.fetch;
         window.fetch = function(...args) {
             const url = args[0]?.toString() || '';
-            // 只允许 data: 和 blob: URL
             if (url.startsWith('data:') || url.startsWith('blob:') || url.startsWith('javascript:')) {
                 return originalFetch.apply(this, args);
             }
@@ -893,7 +887,6 @@
             return Promise.reject(new Error('Offline mode: external requests blocked'));
         };
 
-        // 阻止 XMLHttpRequest
         const originalXHROpen = XMLHttpRequest.prototype.open;
         XMLHttpRequest.prototype.open = function(method, url, ...args) {
             if (typeof url === 'string' && !url.startsWith('data:') && !url.startsWith('blob:')) {
@@ -903,7 +896,6 @@
             return originalXHROpen.apply(this, [method, url, ...args]);
         };
 
-        // 数据管理
         const DB_NAME = 'crm_offline_db';
         const DB_VERSION = 1;
         let db = null;
@@ -918,7 +910,6 @@
         let homeFilterOverdue = false;
         let selectedMonthDate = null;
 
-        // IndexedDB 封装
         const initDB = () => {
             return new Promise((resolve, reject) => {
                 const request = indexedDB.open(DB_NAME, DB_VERSION);
@@ -2143,7 +2134,6 @@
             renderClients();
         };
 
-        // PWA 安装
         let deferredPrompt;
         const installToast = document.getElementById('pwaInstallToast');
         
@@ -2161,14 +2151,12 @@
             installToast?.classList.remove('show');
         });
 
-        // 离线检测
         const setupOfflineDetection = () => {
             const updateStatus = () => {
                 const isOnline = navigator.onLine;
                 const offlineIndicator = document.getElementById('offlineIndicator');
                 const pureOfflineBadge = document.getElementById('pureOfflineBadge');
                 
-                // 始终显示纯离线标识，因为应用本身就是离线设计的
                 pureOfflineBadge.classList.add('show');
                 
                 if (!isOnline) {
@@ -2183,7 +2171,6 @@
             updateStatus();
         };
 
-        // 启动
         const init = async () => {
             await initDB();
             await loadData();
