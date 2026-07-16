@@ -6,22 +6,14 @@
     <meta name="theme-color" content="#0c1015">
     <meta name="apple-mobile-web-app-capable" content="yes">
     <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+    <!-- 禁用所有外部资源预加载 -->
+    <meta http-equiv="Content-Security-Policy" content="default-src 'self' 'unsafe-inline' 'unsafe-eval' data: blob:; img-src 'self' data: blob:; font-src 'self' data:; style-src 'self' 'unsafe-inline'; script-src 'self' 'unsafe-inline' 'unsafe-eval' blob:; connect-src 'self';">
     <title>客户联系管理 Pro</title>
     
-    <!-- 完全内联，零外部依赖 -->
+    <!-- 完全移除 manifest，避免任何外部请求 -->
+    
     <style>
-        /* 字体内联 - 不依赖 Google Fonts */
-        @font-face {
-            font-family: 'Space Grotesk';
-            src: local('Space Grotesk'), local('PingFang SC'), local('Microsoft YaHei');
-            font-weight: 400 700;
-        }
-        @font-face {
-            font-family: 'IBM Plex Sans';
-            src: local('IBM Plex Sans'), local('PingFang SC'), local('Microsoft YaHei');
-            font-weight: 300 600;
-        }
-
+        /* 系统字体栈，确保不请求外部字体 */
         :root {
             --bg: #0c1015;
             --bg-secondary: #131920;
@@ -45,7 +37,7 @@
         * { margin: 0; padding: 0; box-sizing: border-box; -webkit-tap-highlight-color: transparent; }
 
         body {
-            font-family: 'IBM Plex Sans', 'PingFang SC', 'Microsoft YaHei', sans-serif;
+            font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', 'PingFang SC', 'Hiragino Sans GB', 'Microsoft YaHei', 'Helvetica Neue', Helvetica, Arial, sans-serif;
             background: var(--bg);
             color: var(--text);
             min-height: 100vh;
@@ -57,7 +49,7 @@
         }
 
         html { height: -webkit-fill-available; }
-        h1, h2, h3, h4, h5, h6 { font-family: 'Space Grotesk', 'PingFang SC', 'Microsoft YaHei', sans-serif; }
+        h1, h2, h3, h4, h5, h6 { font-family: inherit; font-weight: 600; }
         ::-webkit-scrollbar { width: 0; height: 0; background: transparent; }
 
         .bg-pattern {
@@ -355,8 +347,7 @@
             border-top: 1px solid var(--border);
             display: flex;
             gap: 12px;
-        }
-        
+               
         .modal-footer .btn { flex: 1; }
 
         .empty-state {
@@ -580,7 +571,6 @@
         .calendar-visit-item.pending-overdue { background: rgba(255, 82, 82, 0.05); }
         .calendar-visit-item.pending-future { background: transparent; }
 
-        /* 离线状态指示器 */
         .offline-indicator {
             position: fixed;
             top: 0;
@@ -599,7 +589,6 @@
         
         .offline-indicator.show { transform: translateY(0); }
 
-        /* 纯离线模式指示 */
         .pure-offline-badge {
             position: fixed;
             top: 60px;
@@ -617,7 +606,6 @@
         
         .pure-offline-badge.show { opacity: 1; }
 
-        /* 数据持久化提示 */
         .data-status {
             position: fixed;
             bottom: 70px;
@@ -636,20 +624,20 @@
         
         .data-status.show { opacity: 1; }
         .data-status.saved { border-color: var(--accent); color: var(--accent); }
+
+        /* 错误隐藏 - 防止显示连接错误 */
+        .error-hidden { display: none !important; }
     </style>
 </head>
 <body>
     <div class="bg-pattern"></div>
     
-    <!-- 离线状态指示器 -->
     <div class="offline-indicator" id="offlineIndicator">
         <span>📴 离线模式 - 数据保存在本地</span>
     </div>
 
-    <!-- 纯离线模式标识 -->
     <div class="pure-offline-badge" id="pureOfflineBadge">✓ 纯离线运行</div>
 
-    <!-- 数据保存状态 -->
     <div class="data-status" id="dataStatus">💾 数据已自动保存</div>
     
     <div class="app-shell">
@@ -657,7 +645,6 @@
             <div class="header-inner">
                 <div style="display: flex; align-items: center; gap: 10px;">
                     <div style="width: 32px; height: 32px; background: linear-gradient(135deg, var(--accent), #00b894); border-radius: 8px; display: flex; align-items: center; justify-content: center;">
-                        <!-- 内联 SVG，无外部依赖 -->
                         <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="#0c1015" stroke-width="2.5">
                             <path d="M17 21v-2a4 4 0 0 0-4-4H5a4 4 0 0 0-4 4v2"/>
                             <circle cx="9" cy="7" r="4"/>
@@ -857,7 +844,6 @@
         </nav>
     </div>
 
-    <!-- PWA Install Toast -->
     <div class="pwa-install-toast" id="pwaInstallToast">
         <div style="display: flex; align-items: center; gap: 12px;">
             <div style="width: 48px; height: 48px; background: linear-gradient(135deg, var(--accent), #00b894); border-radius: 12px; display: flex; align-items: center; justify-content: center;">
@@ -884,23 +870,45 @@
             </div>
             <div class="modal-body" id="modalBody"></div>
             <div class="modal-footer" id="modalFooter">
-                <button class="btn btn-secondary" onclick="closeModal()">取消</button>
-                <button class="btn btn-primary" id="modalSaveBtn">保存</button>
+                <button class="btn btn-secondary" onclick="closeModal()" style="flex: 1;">取消</button>
+                <button class="btn btn-primary" id="modalSaveBtn" style="flex: 1;">保存</button>
             </div>
         </div>
     </div>
 
-    <!-- 应用逻辑 - 完全独立，零外部依赖 -->
     <script>
         // ============================================
-        // 核心数据管理 - 纯本地存储，无需服务器
+        // 完全独立的离线应用 - 零网络请求
         // ============================================
+        
+        // 阻止所有 fetch 请求（保险措施）
+        const originalFetch = window.fetch;
+        window.fetch = function(...args) {
+            const url = args[0]?.toString() || '';
+            // 只允许 data: 和 blob: URL
+            if (url.startsWith('data:') || url.startsWith('blob:') || url.startsWith('javascript:')) {
+                return originalFetch.apply(this, args);
+            }
+            console.log('[Blocked] Fetch request:', url);
+            return Promise.reject(new Error('Offline mode: external requests blocked'));
+        };
+
+        // 阻止 XMLHttpRequest
+        const originalXHROpen = XMLHttpRequest.prototype.open;
+        XMLHttpRequest.prototype.open = function(method, url, ...args) {
+            if (typeof url === 'string' && !url.startsWith('data:') && !url.startsWith('blob:')) {
+                console.log('[Blocked] XHR request:', url);
+                throw new Error('Offline mode: external requests blocked');
+            }
+            return originalXHROpen.apply(this, [method, url, ...args]);
+        };
+
+        // 数据管理
         const DB_NAME = 'crm_offline_db';
         const DB_VERSION = 1;
         let db = null;
         let data = { clients: [], industries: [], visits: [] };
         
-        // 状态变量
         let currentMonth = new Date();
         let currentWeek = new Date();
         let currentDay = new Date();
@@ -909,18 +917,14 @@
         let activeRecordFilter = 'all';
         let homeFilterOverdue = false;
         let selectedMonthDate = null;
-        let isPureOffline = false;
 
-        // ============================================
-        // IndexedDB 封装 - 比 LocalStorage 更可靠
-        // ============================================
+        // IndexedDB 封装
         const initDB = () => {
             return new Promise((resolve, reject) => {
                 const request = indexedDB.open(DB_NAME, DB_VERSION);
                 
                 request.onerror = () => {
                     console.log('IndexedDB failed, fallback to localStorage');
-                    isPureOffline = true;
                     resolve(null);
                 };
                 
@@ -989,15 +993,11 @@
             setTimeout(() => el.classList.remove('show', 'saved'), 1500);
         };
 
-        // ============================================
-        // 数据加载与保存
-        // ============================================
         const loadData = async () => {
             const stored = await dbGet('main_data');
             
             if (stored && stored.clients) {
                 data = stored;
-                // 数据迁移
                 data.visits.forEach(v => {
                     if (!v.contactType) v.contactType = '';
                     if (!v.status) v.status = 'pending';
@@ -1027,9 +1027,6 @@
             saveData();
         };
 
-        // ============================================
-        // 工具函数
-        // ============================================
         const getTodayStr = () => {
             const d = new Date();
             return `${d.getFullYear()}-${String(d.getMonth()+1).padStart(2,'0')}-${String(d.getDate()).padStart(2,'0')}`;
@@ -1039,9 +1036,6 @@
             return `${d.getFullYear()}-${String(d.getMonth()+1).padStart(2,'0')}-${String(d.getDate()).padStart(2,'0')}`;
         };
 
-        // ============================================
-        // 导出功能 - 纯本地生成文件
-        // ============================================
         const exportClients = () => {
             if (data.clients.length === 0) return alert('暂无客户数据可导出');
             
@@ -1087,24 +1081,16 @@
             const csv = BOM + [headers.join(','), ...rows.map(r => r.map(cell => `"${cell}"`).join(','))].join('\n');
             const blob = new Blob([csv], { type: 'text/csv;charset=utf-8;' });
             
-            // 兼容各浏览器的下载方式
-            if (navigator.msSaveBlob) {
-                navigator.msSaveBlob(blob, filename);
-            } else {
-                const url = URL.createObjectURL(blob);
-                const link = document.createElement('a');
-                link.href = url;
-                link.download = filename;
-                document.body.appendChild(link);
-                link.click();
-                document.body.removeChild(link);
-                URL.revokeObjectURL(url);
-            }
+            const url = URL.createObjectURL(blob);
+            const link = document.createElement('a');
+            link.href = url;
+            link.download = filename;
+            document.body.appendChild(link);
+            link.click();
+            document.body.removeChild(link);
+            URL.revokeObjectURL(url);
         };
 
-        // ============================================
-        // 页面渲染函数
-        // ============================================
         const renderHome = () => {
             const today = getTodayStr();
             const allPending = data.visits.filter(v => v.status === 'pending');
@@ -1476,9 +1462,6 @@
 
         window.filterRecords = (id) => { activeRecordFilter = id; renderRecords(); };
 
-        // ============================================
-        // 导航
-        // ============================================
         window.navigate = (viewId) => {
             document.querySelectorAll('.view').forEach(v => v.classList.remove('active'));
             document.getElementById(`view-${viewId}`).classList.add('active');
@@ -1497,9 +1480,6 @@
             document.getElementById('pageTitle').innerText = titles[viewId];
         };
 
-        // ============================================
-        // 模态框系统
-        // ============================================
         window.closeModal = () => {
             document.getElementById('modalOverlay').classList.remove('active');
         };
@@ -1690,15 +1670,15 @@
                         <label style="font-size:12px; color:var(--text-muted);">联系方式 <span class="required-star">*</span></label>
                         <div class="contact-type-options" style="margin-top:8px;">
                             <div class="contact-type-option ${visit.contactType === 'phone' ? 'active' : ''}" id="edit_ct_phone" onclick="setEditContactType('phone')">
-                                <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" style="width:20px;height:20px;margin-bottom:4px;"><path d="M22 16.92v3a2 2 0 0 1-2.18 2 19.79 19.79 0 0 1-8.63-3.07 19.5 19.5 0 0 1-6-6 19.79 19.79 0 0 1-3.07-8.67A2 2 0 0 1 4.11 2h3a2 2 0 0 1 2 1.72 12.84 12.84 0 0 0 .7 2.81 2 2 0 0 1-.45 2.11L8.09 9.91a16 16 0 0 0 6 6l1.27-1.27a2 2 0 0 1 2.11-.45 12.84 12.84 0 0 0 2.81.7A2 2 0 0 1 22 16.92z"/></svg>
+                                <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" style="width:20px;height:20px;margin-bottom:4px;display:block;margin:0 auto 4px;"><path d="M22 16.92v3a2 2 0 0 1-2.18 2 19.79 19.79 0 0 1-8.63-3.07 19.5 19.5 0 0 1-6-6 19.79 19.79 0 0 1-3.07-8.67A2 2 0 0 1 4.11 2h3a2 2 0 0 1 2 1.72 12.84 12.84 0 0 0 .7 2.81 2 2 0 0 1-.45 2.11L8.09 9.91a16 16 0 0 0 6 6l1.27-1.27a2 2 0 0 1 2.11-.45 12.84 12.84 0 0 0 2.81.7A2 2 0 0 1 22 16.92z"/></svg>
                                 <div>电话</div>
                             </div>
                             <div class="contact-type-option ${visit.contactType === 'wechat' ? 'active' : ''}" id="edit_ct_wechat" onclick="setEditContactType('wechat')">
-                                <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" style="width:20px;height:20px;margin-bottom:4px;"><path d="M21 11.5a8.38 8.38 0 0 1-.9 3.8 8.5 8.5 0 0 1-7.6 4.7 8.38 8.38 0 0 1-3.8-.9L3 21l1.9-5.7a8.38 8.38 0 0 1-.9-3.8 8.5 8.5 0 0 1 4.7-7.6 8.38 8.38 0 0 1 3.8-.9h.5a8.48 8.48 0 0 1 8 8v.5z"/></svg>
+                                <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" style="width:20px;height:20px;margin-bottom:4px;display:block;margin:0 auto 4px;"><path d="M21 11.5a8.38 8.38 0 0 1-.9 3.8 8.5 8.5 0 0 1-7.6 4.7 8.38 8.38 0 0 1-3.8-.9L3 21l1.9-5.7a8.38 8.38 0 0 1-.9-3.8 8.5 8.5 0 0 1 4.7-7.6 8.38 8.38 0 0 1 3.8-.9h.5a8.48 8.48 0 0 1 8 8v.5z"/></svg>
                                 <div>微信</div>
                             </div>
                             <div class="contact-type-option ${visit.contactType === 'visit' ? 'active' : ''}" id="edit_ct_visit" onclick="setEditContactType('visit')">
-                                <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" style="width:20px;height:20px;margin-bottom:4px;"><path d="M3 9l9-7 9 7v11a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2z"/><polyline points="9 22 9 12 15 12 15 22"/></svg>
+                                <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" style="width:20px;height:20px;margin-bottom:4px;display:block;margin:0 auto 4px;"><path d="M3 9l9-7 9 7v11a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2z"/><polyline points="9 22 9 12 15 12 15 22"/></svg>
                                 <div>上门</div>
                             </div>
                         </div>
@@ -1884,9 +1864,6 @@
             overlay.classList.add('active');
         };
 
-        // ============================================
-        // 反馈弹窗
-        // ============================================
         window.openFeedbackModal = (visitId) => {
             const visit = data.visits.find(v => v.id === visitId);
             if (!visit) {
@@ -1923,15 +1900,15 @@
                     <label style="font-size:12px; color:var(--text-muted);">联系方式 <span class="required-star">*</span></label>
                     <div class="contact-type-options" style="margin-top:8px;">
                         <div class="contact-type-option active" id="fb_ct_phone" onclick="setFbContactType('phone')">
-                            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" style="width:20px;height:20px;margin-bottom:4px;"><path d="M22 16.92v3a2 2 0 0 1-2.18 2 19.79 19.79 0 0 1-8.63-3.07 19.5 19.5 0 0 1-6-6 19.79 19.79 0 0 1-3.07-8.67A2 2 0 0 1 4.11 2h3a2 2 0 0 1 2 1.72 12.84 12.84 0 0 0 .7 2.81 2 2 0 0 1-.45 2.11L8.09 9.91a16 16 0 0 0 6 6l1.27-1.27a2 2 0 0 1 2.11-.45 12.84 12.84 0 0 0 2.81.7A2 2 0 0 1 22 16.92z"/></svg>
+                            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" style="width:20px;height:20px;margin-bottom:4px;display:block;margin:0 auto 4px;"><path d="M22 16.92v3a2 2 0 0 1-2.18 2 19.79 19.79 0 0 1-8.63-3.07 19.5 19.5 0 0 1-6-6 19.79 19.79 0 0 1-3.07-8.67A2 2 0 0 1 4.11 2h3a2 2 0 0 1 2 1.72 12.84 12.84 0 0 0 .7 2.81 2 2 0 0 1-.45 2.11L8.09 9.91a16 16 0 0 0 6 6l1.27-1.27a2 2 0 0 1 2.11-.45 12.84 12.84 0 0 0 2.81.7A2 2 0 0 1 22 16.92z"/></svg>
                             <div>电话</div>
                         </div>
                         <div class="contact-type-option" id="fb_ct_wechat" onclick="setFbContactType('wechat')">
-                            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" style="width:20px;height:20px;margin-bottom:4px;"><path d="M21 11.5a8.38 8.38 0 0 1-.9 3.8 8.5 8.5 0 0 1-7.6 4.7 8.38 8.38 0 0 1-3.8-.9L3 21l1.9-5.7a8.38 8.38 0 0 1-.9-3.8 8.5 8.5 0 0 1 4.7-7.6 8.38 8.38 0 0 1 3.8-.9h.5a8.48 8.48 0 0 1 8 8v.5z"/></svg>
+                            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" style="width:20px;height:20px;margin-bottom:4px;display:block;margin:0 auto 4px;"><path d="M21 11.5a8.38 8.38 0 0 1-.9 3.8 8.5 8.5 0 0 1-7.6 4.7 8.38 8.38 0 0 1-3.8-.9L3 21l1.9-5.7a8.38 8.38 0 0 1-.9-3.8 8.5 8.5 0 0 1 4.7-7.6 8.38 8.38 0 0 1 3.8-.9h.5a8.48 8.48 0 0 1 8 8v.5z"/></svg>
                             <div>微信</div>
                         </div>
                         <div class="contact-type-option" id="fb_ct_visit" onclick="setFbContactType('visit')">
-                            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" style="width:20px;height:20px;margin-bottom:4px;"><path d="M3 9l9-7 9 7v11a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2z"/><polyline points="9 22 9 12 15 12 15 22"/></svg>
+                            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" style="width:20px;height:20px;margin-bottom:4px;display:block;margin:0 auto 4px;"><path d="M3 9l9-7 9 7v11a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2z"/><polyline points="9 22 9 12 15 12 15 22"/></svg>
                             <div>上门</div>
                         </div>
                     </div>
@@ -2124,9 +2101,6 @@
             overlay.classList.add('active');
         };
 
-        // ============================================
-        // 辅助操作
-        // ============================================
         window.deleteClient = async (id) => {
             if (!confirm('删除客户将同时删除相关联系记录，确定吗？')) return;
             data.clients = data.clients.filter(c => c.id !== id);
@@ -2169,9 +2143,7 @@
             renderClients();
         };
 
-        // ============================================
-        // PWA 安装功能
-        // ============================================
+        // PWA 安装
         let deferredPrompt;
         const installToast = document.getElementById('pwaInstallToast');
         
@@ -2185,52 +2157,38 @@
             if (!deferredPrompt) return;
             deferredPrompt.prompt();
             const { outcome } = await deferredPrompt.userChoice;
-            console.log('User choice:', outcome);
             deferredPrompt = null;
             installToast?.classList.remove('show');
         });
 
-        // ============================================
-        // 离线状态检测
-        // ============================================
+        // 离线检测
         const setupOfflineDetection = () => {
             const updateStatus = () => {
                 const isOnline = navigator.onLine;
                 const offlineIndicator = document.getElementById('offlineIndicator');
                 const pureOfflineBadge = document.getElementById('pureOfflineBadge');
                 
+                // 始终显示纯离线标识，因为应用本身就是离线设计的
+                pureOfflineBadge.classList.add('show');
+                
                 if (!isOnline) {
                     offlineIndicator.classList.add('show');
-                    pureOfflineBadge.classList.add('show');
-                    console.log('📴 进入离线模式');
                 } else {
                     offlineIndicator.classList.remove('show');
-                    // 保持纯离线标识显示，因为应用本身就是离线设计的
-                    pureOfflineBadge.classList.add('show');
                 }
             };
 
             window.addEventListener('online', updateStatus);
             window.addEventListener('offline', updateStatus);
-            
-            // 初始状态
             updateStatus();
         };
 
-        // ============================================
-        // 启动应用
-        // ============================================
+        // 启动
         const init = async () => {
-            // 初始化数据库
             await initDB();
-            
-            // 加载数据
             await loadData();
-            
-            // 设置离线检测
             setupOfflineDetection();
             
-            // 绑定导航
             document.querySelectorAll('.nav-item-mobile').forEach(el => {
                 if (el.dataset.view) el.addEventListener('click', () => navigate(el.dataset.view));
             });
@@ -2243,11 +2201,9 @@
                 document.getElementById('modalOverlay').classList.remove('active');
             });
 
-            // 初始页面
             navigate('calendar');
         };
 
-        // 启动
         init();
     </script>
 </body>
